@@ -3,7 +3,7 @@ import { $, escapar } from '../core/dom.js';
 import { estado } from '../core/state.js';
 import { URL_ESTILOS_APP } from '../core/paths.js';
 import { icono } from '../ui/icons.js';
-import { formatearFechaCompleta, formatearHoraExacta, formatearSegundos, claveFechaLocal, etiquetaTipoRecorrido } from '../core/format.js';
+import { formatearFechaCompleta, formatearHoraExacta, claveFechaLocal, etiquetaTipoRecorrido } from '../core/format.js';
 import { SISTEMAS } from '../data/systems.js';
 import { leerRegistros, revisarInspeccion, responderInspeccion } from '../data/storage.js';
 import { mostrarAlertaVisual } from '../ui/dialogs.js';
@@ -39,8 +39,6 @@ function plantillaAuditoria(r) {
       ${item('Inspector Responsable', `<span>${escapar(r.inspector || 'Técnico')}</span>`)}
       ${item('Fecha de Inspección', `<span>${escapar(formatearFechaCompleta(r.fechaISO || r.horaInicioISO))}</span>`)}
       ${item('Tipo de Recorrido', `<span>${etiquetaTipoRecorrido(r.tipoRecorrido)}</span>`)}
-      ${item('Horario Registrado', `<span>${escapar(formatearHoraExacta(r.horaInicioISO))} a ${escapar(r.horaFinISO ? formatearHoraExacta(r.horaFinISO) : '—')}</span>`)}
-      ${item('Tiempo de Recorrido', `<span>${formatearSegundos(r.duracionSegundos)}</span>`)}
       ${item('Condición Técnica', `<div><span class="tag ${r.resultado === 'Conforme' ? 'tag-green' : 'tag-red'}">${escapar(r.resultado)}</span></div>`)}
       ${item('Estado de Supervisión', `<div><strong class="audit-status">${escapar(r.estadoRevision || 'Pendiente')}</strong></div>`)}
     </div>`;
@@ -167,7 +165,7 @@ export function verDetalle(id, campoDestacadoId = '', sistemaDestacado = '') {
   const esIngeniero = usuario && usuario.rol === 'ingeniero';
   const esInspectorDuenio = usuario && usuario.rol === 'inspector' && r.inspectorId === usuario.id;
 
-  $('modalTitulo').textContent = `Auditoría e Inspección · ${formatearFechaCompleta(r.fechaISO || r.horaInicioISO)}`;
+  $('modalTitulo').textContent = `Informe · ${formatearFechaCompleta(r.fechaISO || r.horaInicioISO)}`;
   $('btnGenerarPdfInforme').classList.toggle('hidden', !esIngeniero);
 
   let html = plantillaAuditoria(r);
