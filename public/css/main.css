@@ -1,0 +1,34 @@
+/* SIDEM · hoja de estilos de la vista /app (el login usa css/login.css).
+   Solo importa las partes en orden: base → componentes → vistas.
+   Para agregar estilos nuevos, cree o edite el archivo de la parte correspondiente. */
+
+/* Base */
+@import url("base/variables.css");
+@import url("base/reset.css");
+@import url("base/layout.css");
+
+/* Componentes reutilizables */
+@import url("components/icons.css");
+@import url("components/buttons.css");
+@import url("components/badges.css");
+@import url("components/forms.css");
+@import url("components/panels.css");
+@import url("components/indicator.css");
+@import url("components/tables.css");
+@import url("components/alerts.css");
+@import url("components/modals.css");
+@import url("components/dialogs.css");
+
+/* Vistas */
+@import url("views/shell.css");
+@import url("views/home.css");
+@import url("views/inspection.css");
+@import url("views/technician-reports.css");
+@import url("views/history.css");
+@import url("views/schedule.css");
+@import url("views/users.css");
+@import url("views/report-detail.css");
+@import url("views/dashboard.css");
+
+/* Utilidades al final para que tengan prioridad */
+@import url("base/utilities.css");

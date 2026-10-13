@@ -1,0 +1,37 @@
+<%# Programar o editar una semana del rol (features/schedule.js) %>
+<div id="modalCronograma" class="modal-backdrop hidden" data-backdrop-action="close-schedule-modal">
+  <section class="modal modal-form" role="dialog" aria-modal="true" aria-labelledby="modalCronogramaTitulo">
+    <header class="modal-header modal-header-amber">
+      <h3 id="modalCronogramaTitulo" class="modal-title">Programar Semana de Recorrido</h3>
+      <button type="button" class="modal-close" aria-label="Cerrar" data-action="close-schedule-modal"><%- icono('cerrar') %></button>
+    </header>
+    <div class="modal-body">
+      <form id="formCronograma" class="form" data-submit="save-schedule-week">
+        <input type="hidden" id="cronogramaId" />
+        <div class="form-field">
+          <label for="cronogramaFechaInicio">Fecha de Inicio de Semana (Lunes) *</label>
+          <input id="cronogramaFechaInicio" type="date" required data-change="schedule-start-change" />
+        </div>
+        <div class="form-field">
+          <label for="cronogramaFechaFin">Fecha de Cierre de Semana (Domingo) *</label>
+          <input id="cronogramaFechaFin" type="date" required readonly />
+        </div>
+        <div class="form-field">
+          <label for="cronogramaTecnico">Técnico Asignado al Recorrido *</label>
+          <select id="cronogramaTecnico" required>
+            <%# Se llena con los técnicos activos al abrir la ventana %>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="cronogramaNotas">Notas / Indicaciones del Ingeniero</label>
+          <textarea id="cronogramaNotas" rows="2" maxlength="500"
+            placeholder="Ej. Enfoque especial en presión de bombas de agua helada o pruebas de transferencia..."></textarea>
+        </div>
+        <footer class="form-actions">
+          <button type="button" class="btn btn-secondary" data-action="close-schedule-modal">Cancelar</button>
+          <button type="submit" class="btn btn-green">Guardar en Cronograma</button>
+        </footer>
+      </form>
+    </div>
+  </section>
+</div>

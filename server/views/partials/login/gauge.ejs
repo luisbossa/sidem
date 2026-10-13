@@ -1,0 +1,13 @@
+<%# Emblema: manómetro con zonas verde, ámbar y roja (estilos en css/components/gauge.css) %>
+<div class="login-gauge" aria-hidden="true">
+  <svg class="gauge" viewBox="0 0 120 120">
+    <circle cx="60" cy="60" r="56" class="gauge-body" />
+    <path d="M30.3 89.7A42 42 0 1 1 89.7 89.7" class="gauge-track" />
+    <path d="M89.7 30.3A42 42 0 0 1 102 60" class="gauge-warn" />
+    <path d="M102 60A42 42 0 0 1 89.7 89.7" class="gauge-danger" />
+    <path d="M34.5 85.5A36 36 0 1 1 85.5 85.5" class="gauge-ticks" />
+    <line x1="60" y1="60" x2="60" y2="24" class="gauge-needle" />
+    <circle cx="60" cy="60" r="6" class="gauge-hub" />
+    <text x="60" y="92" class="gauge-label">PSI</text>
+  </svg>
+</div>

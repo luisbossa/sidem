@@ -1,0 +1,20 @@
+/* SIDEM · hoja de estilos de la vista /login y de las páginas de error.
+   Solo carga lo que usa el inicio de sesión. */
+
+/* Base */
+@import url("base/variables.css");
+@import url("base/reset.css");
+
+/* Componentes */
+@import url("components/icons.css");
+@import url("components/gauge.css");
+@import url("components/buttons.css");
+@import url("components/forms.css");
+@import url("components/modals.css");
+@import url("components/dialogs.css");
+
+/* Vista */
+@import url("views/login.css");
+
+/* Utilidades al final para que tengan prioridad */
+@import url("base/utilities.css");

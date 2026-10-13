@@ -1,0 +1,56 @@
+/* Clases utilitarias de uso general. */
+.hidden {
+  display: none !important;
+}
+
+.text-success {
+  color: #15803d !important;
+}
+
+.text-danger {
+  color: #b91c1c !important;
+}
+
+.text-muted-em {
+  color: var(--muted-light);
+  font-weight: 600;
+}
+
+.text-pre {
+  white-space: pre-wrap;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.empty-state {
+  margin: 0;
+  text-align: center;
+  padding: 35px 20px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.empty-state-dashed {
+  background: #f8fafc;
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.empty-state-sm {
+  padding: 25px;
+  color: var(--muted-light);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

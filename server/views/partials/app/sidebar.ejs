@@ -1,0 +1,24 @@
+<%# Barra lateral: marca y menú del rol (en móvil, el menú pasa a la barra inferior) %>
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <span class="brand-mark"><%- icono('manometro') %></span>
+    <div class="brand-text">
+      <strong>SIDEM</strong>
+      <span>Casa de Máquinas</span>
+    </div>
+  </div>
+
+  <nav id="barraUsuario" class="side-nav" aria-label="Navegación principal">
+    <p class="side-nav-label">Menú</p>
+    <% menu.forEach(item => { %>
+      <button id="<%= item.id %>" type="button" class="nav-item" data-action="show-view" data-view="<%= item.vista %>">
+        <%- icono(item.icono) %><span class="nav-label"><%= item.texto %></span>
+      </button>
+    <% }) %>
+  </nav>
+
+  <div class="sidebar-foot">
+    <strong>Área de Salud Naranjo</strong>
+    <span>Ingeniería y Mantenimiento CCSS</span>
+  </div>
+</aside>

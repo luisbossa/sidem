@@ -1,0 +1,76 @@
+/* Paneles: superficie blanca con cabecera neutra.
+   panel-header-* indica el tipo de panel con un icono de color, no con un fondo de color.
+   En el formulario de cada sistema, la cabecera muestra el color del sistema (--theme)
+   como una barra lateral. */
+.panel {
+  margin-bottom: 20px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 56px;
+  padding: 12px 16px;
+  color: var(--text);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: inset 3px 0 0 var(--theme);
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.panel-header h3 .icon {
+  color: var(--muted-light);
+}
+
+/* Paneles de administración: sin barra de color */
+.panel-header-blue,
+.panel-header-dark,
+.panel-header-amber {
+  box-shadow: none;
+}
+
+.panel-header-blue h3 .icon {
+  color: var(--primary);
+}
+
+.panel-header-amber h3 .icon {
+  color: var(--amber);
+}
+
+.panel-body {
+  padding: 16px;
+  background: var(--surface);
+}
+
+.panel-strong .table-scroll {
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.panel-strong .data-table th,
+.panel-strong .data-table td {
+  border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 768px) {
+  .panel-header {
+    padding: 12px 20px;
+  }
+
+  .panel-body {
+    padding: 20px;
+  }
+}

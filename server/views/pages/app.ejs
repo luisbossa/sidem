@@ -1,0 +1,12 @@
+<%# Página principal (layout: layouts/app). Solo se renderizan las secciones del rol de la sesión. %>
+<% if (usuario.rol === 'inspector') { %>
+  <%- include('../partials/app/sections/home') %>
+  <%- include('../partials/app/sections/technician-reports') %>
+  <%- include('../partials/app/sections/schedule') %>
+  <%- include('../partials/app/sections/inspection') %>
+<% } else { %>
+  <%- include('../partials/app/sections/dashboard') %>
+  <%- include('../partials/app/sections/history') %>
+  <%- include('../partials/app/sections/schedule') %>
+  <%- include('../partials/app/sections/users') %>
+<% } %>

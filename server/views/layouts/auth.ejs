@@ -1,0 +1,16 @@
+<%# Layout de las páginas sin sesión: inicio de sesión y errores %>
+<!doctype html>
+<html lang="es">
+  <head>
+    <%- include('../partials/head', {
+      titulo: tituloPagina,
+      hojaEstilos: '/css/login.css',
+      script: locals.script === undefined ? '/js/login.js' : locals.script,
+      colorTema: '#111827'
+    }) %>
+  </head>
+  <body class="login-page">
+    <%- body %>
+    <%- include('../partials/dialog') %>
+  </body>
+</html>

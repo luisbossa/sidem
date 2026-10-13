@@ -1,0 +1,9 @@
+/* Sistema de vistas: solo la vista activa se muestra.
+   El contenedor .app y la estructura general están en views/shell.css. */
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}

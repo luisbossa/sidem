@@ -1,0 +1,33 @@
+<%# Layout de la aplicación: barra lateral, barra superior, contenido (body) y ventanas modales %>
+<!doctype html>
+<html lang="es">
+  <head>
+    <%- include('../partials/head', {
+      titulo: tituloPagina,
+      hojaEstilos: '/css/main.css',
+      script: '/js/main.js',
+      colorTema: '#ffffff'
+    }) %>
+  </head>
+  <body class="app-page">
+    <div class="app-layout">
+      <%- include('../partials/app/sidebar') %>
+
+      <div class="app-main">
+        <%- include('../partials/app/topbar') %>
+
+        <main class="app">
+          <%- body %>
+        </main>
+      </div>
+    </div>
+
+    <%- include('../partials/app/modals/report-detail') %>
+    <% if (usuario.rol === 'ingeniero') { %>
+      <%- include('../partials/app/modals/dashboard-detail') %>
+      <%- include('../partials/app/modals/user-form') %>
+      <%- include('../partials/app/modals/schedule-form') %>
+    <% } %>
+    <%- include('../partials/dialog') %>
+  </body>
+</html>

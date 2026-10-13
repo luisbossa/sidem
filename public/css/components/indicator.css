@@ -1,0 +1,295 @@
+/* Tarjeta de indicador (dashboard): título, valor, estado, detalle y acción.
+   El tipo de indicador define el color de su icono:
+     gestión  → indicator-nonconformities, -failures, -compliance, -duration, -pending
+     consumo  → indicator-water, -diesel-generator, -diesel-fire, -oxygen, -instrument-air
+   El estado usa status-ok | status-warning | status-alert | status-idle. */
+
+/* Rejilla: 1 columna en teléfono, 2 en teléfono grande/tableta, 3 en escritorio,
+   5 en escritorio amplio */
+.indicator-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+/* Tarjeta */
+.indicator {
+  --indicator-color: var(--muted-light);
+  --indicator-soft: #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.indicator-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.indicator-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.indicator-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--indicator-color);
+  background: var(--indicator-soft);
+  border-radius: var(--radius-md);
+}
+
+.indicator-icon .icon {
+  width: 17px;
+  height: 17px;
+}
+
+.indicator-icon .icon-wide {
+  width: 26px;
+}
+
+/* Valor */
+.indicator-reading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  color: var(--text);
+}
+
+.indicator-value {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.indicator-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted-light);
+}
+
+/* Valores de texto (p. ej. nombre de un sistema) */
+.indicator-reading-text .indicator-value {
+  font-size: 16px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+/* Barra de progreso (cumplimiento) */
+.indicator-meter {
+  height: 6px;
+  overflow: hidden;
+  background: #eef0f3;
+  border-radius: 999px;
+}
+
+.indicator-meter > span {
+  display: block;
+  width: var(--fill);
+  height: 100%;
+  background: var(--status-color);
+  border-radius: 999px;
+}
+
+/* Estado y detalle */
+.indicator-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+}
+
+.indicator-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-text);
+  background: var(--status-soft);
+  border-radius: 999px;
+}
+
+.indicator-led {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--status-color);
+}
+
+.status-ok {
+  --status-color: #16a34a;
+  --status-soft: var(--green-soft);
+  --status-text: #166534;
+}
+
+.status-warning {
+  --status-color: #d97706;
+  --status-soft: var(--amber-soft);
+  --status-text: #92400e;
+}
+
+.status-alert {
+  --status-color: #dc2626;
+  --status-soft: var(--red-soft);
+  --status-text: #991b1b;
+}
+
+.status-idle {
+  --status-color: #9ca3af;
+  --status-soft: #f3f4f6;
+  --status-text: var(--muted);
+}
+
+.indicator-detail {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted-light);
+}
+
+/* Acción */
+.indicator-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.indicator-action .icon {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.12s ease;
+}
+
+/* Indicador que abre un detalle */
+.indicator-interactive {
+  cursor: pointer;
+}
+
+.indicator-interactive:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.indicator-interactive:hover .indicator-action .icon {
+  transform: translateX(2px);
+}
+
+.indicator-interactive:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Tipos: indicadores de gestión */
+.indicator-nonconformities {
+  --indicator-color: #b91c1c;
+  --indicator-soft: #fef2f2;
+}
+
+.indicator-failures {
+  --indicator-color: #4b5563;
+  --indicator-soft: #f3f4f6;
+}
+
+.indicator-compliance {
+  --indicator-color: #1d4ed8;
+  --indicator-soft: #eff4ff;
+}
+
+.indicator-duration {
+  --indicator-color: #0f766e;
+  --indicator-soft: #f0fdfa;
+}
+
+.indicator-pending {
+  --indicator-color: #b45309;
+  --indicator-soft: #fffbeb;
+}
+
+/* Tipos: consumos operativos */
+.indicator-water {
+  --indicator-color: #0369a1;
+  --indicator-soft: #f0f9ff;
+}
+
+.indicator-diesel-generator {
+  --indicator-color: #c2410c;
+  --indicator-soft: #fff7ed;
+}
+
+.indicator-diesel-fire {
+  --indicator-color: #b91c1c;
+  --indicator-soft: #fef2f2;
+}
+
+.indicator-oxygen {
+  --indicator-color: #15803d;
+  --indicator-soft: #f0fdf4;
+}
+
+.indicator-instrument-air {
+  --indicator-color: #9f1239;
+  --indicator-soft: #fff1f2;
+}
+
+@media (min-width: 480px) {
+  .indicator-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .indicator-grid {
+    gap: 16px;
+  }
+
+  .indicator {
+    padding: 18px 20px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .indicator-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1360px) {
+  .indicator-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  /* Títulos de 1 o 2 líneas: reserva 2 para que los valores queden alineados */
+  .indicator-title {
+    min-height: calc(2 * 1.35em);
+  }
+}

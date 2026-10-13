@@ -1,0 +1,22 @@
+{
+  "name": "sidem",
+  "version": "2.0.0",
+  "private": true,
+  "description": "SIDEM · Inspección de Sistemas Electromecánicos de la Casa de Máquinas (Área de Salud Naranjo, CCSS)",
+  "type": "module",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test \"tests/**/*.test.js\"",
+    "respaldo": "node server/tools/backup.js"
+  },
+  "dependencies": {
+    "ejs": "3.1.10",
+    "express": "5.1.0",
+    "express-ejs-layouts": "2.5.1"
+  }
+}

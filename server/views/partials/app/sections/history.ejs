@@ -1,0 +1,12 @@
+<%# Historial de informes y cancelaciones (features/history.js) %>
+<section id="vista-historial" class="view" aria-labelledby="tituloSupervisionIngeniero">
+  <article class="panel panel-strong">
+    <header class="panel-header panel-header-dark">
+      <h3 id="tituloSupervisionIngeniero"><%- icono('buscar') %> Historial de informes</h3>
+      <button id="btnQuitarFiltroTecnico" type="button" class="btn btn-blue btn-sm hidden" data-action="clear-technician-filter">
+        <%- icono('cerrar') %> Ver todas las inspecciones
+      </button>
+    </header>
+    <div id="historialContenido" class="panel-body"></div>
+  </article>
+</section>

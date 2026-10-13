@@ -1,0 +1,23 @@
+<%# Panel de identidad del login (mismo tono que la barra lateral de la app) %>
+<section class="login-panel" aria-label="Sistema de inspección de la Casa de Máquinas">
+  <%- include('schematic') %>
+
+  <header class="login-brand">
+    <span class="brand-mark" aria-hidden="true"><%- icono('manometro') %></span>
+    <div class="brand-text">
+      <strong>SIDEM</strong>
+      <span>Casa de Máquinas</span>
+    </div>
+  </header>
+
+  <div class="login-hero">
+    <%- include('gauge') %>
+    <p class="login-hero-title">Inspección de Sistemas Electromecánicos</p>
+    <p class="login-hero-desc">Recorridos diarios, registro de lecturas y revisión de informes de los 13 sistemas de la Casa de Máquinas.</p>
+  </div>
+
+  <footer class="login-panel-foot">
+    <strong>Área de Salud Naranjo</strong>
+    <span>Ingeniería y Mantenimiento CCSS</span>
+  </footer>
+</section>

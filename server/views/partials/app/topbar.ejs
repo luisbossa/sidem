@@ -1,0 +1,24 @@
+<%# Barra superior: título de la vista, fecha, estado y usuario de la sesión %>
+<header class="topbar">
+  <span class="topbar-mark"><%- icono('manometro') %></span>
+  <div class="topbar-title">
+    <span class="topbar-context">Casa de Máquinas</span>
+    <h1 id="tituloPagina"><%= tituloPagina %></h1>
+  </div>
+
+  <div class="topbar-status" aria-live="polite">
+    <span id="fechaCabecera" class="topbar-date"><%= fechaHoy %></span>
+    <span class="status-chip"><span class="status-dot" aria-hidden="true"></span><span id="estadoCabecera"><%= perfil.estado %></span></span>
+  </div>
+
+  <div class="topbar-user">
+    <span id="avatarUsuario" class="user-avatar" aria-hidden="true"><%= iniciales %></span>
+    <div class="user-text">
+      <span id="txtNombreUsuario" class="user-name"><%= usuario.nombre %></span>
+      <span id="badgeRolUsuario" class="role-badge <%= perfil.rolClase %>"><%= perfil.rolTexto %></span>
+    </div>
+    <button id="btnCerrarSesion" type="button" class="topbar-logout" data-action="logout" aria-label="Cerrar sesión" title="Cerrar sesión">
+      <%- icono('salir') %>
+    </button>
+  </div>
+</header>

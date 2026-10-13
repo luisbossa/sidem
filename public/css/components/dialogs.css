@@ -1,0 +1,113 @@
+/* Diálogos de alerta, confirmación y justificación. */
+.dialog-box {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 28px 20px;
+  margin: auto 16px;
+  max-width: 460px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  animation: pop-scale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dialog-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+}
+
+.dialog-icon .icon {
+  width: 32px;
+  height: 32px;
+}
+
+.dialog-box.warning .dialog-icon {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: var(--red);
+}
+
+.dialog-box.success .dialog-icon {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: var(--green);
+}
+
+.dialog-box.info .dialog-icon {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  color: var(--blue);
+}
+
+.dialog-box h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dialog-message {
+  margin: 0 0 24px;
+  font-size: 14.5px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+}
+
+.dialog-actions .btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.dialog-textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  resize: vertical;
+  outline: 0;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.dialog-textarea:focus {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+.dialog-error {
+  display: block;
+  color: #b91c1c;
+  font-weight: 600;
+  margin-top: 7px;
+  text-align: left;
+}
+
+@media (min-width: 480px) {
+  .dialog-box {
+    padding: 32px 28px;
+    margin: 0;
+  }
+
+  .dialog-actions {
+    flex-direction: row;
+  }
+}

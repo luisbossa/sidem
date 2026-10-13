@@ -1,0 +1,354 @@
+/* Campos de formulario: texto, número, fecha, select, textarea, campo con unidad,
+   verificación Conforme / No conforme / No aplica y acciones de formulario.
+   En teléfono los campos usan 16px para que iOS no haga zoom al enfocarlos. */
+.form-field {
+  width: 100%;
+}
+
+.form-field label,
+.check-field legend {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-soft);
+}
+
+/* Base común */
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text);
+  background-color: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  outline: 0;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.form-field textarea {
+  min-height: 88px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.form-field input::placeholder,
+.form-field textarea::placeholder {
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.form-field input:hover,
+.form-field select:hover,
+.form-field textarea:hover {
+  border-color: #b3bac5;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
+/* Select con flecha propia */
+.form-field select {
+  padding-right: 38px;
+  appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+.form-field select::-ms-expand {
+  display: none;
+}
+
+/* Fecha: icono del calendario más sutil */
+.form-field input[type='date'] {
+  min-width: 0;
+}
+
+.form-field input[type='date']::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.form-field input[type='date']::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.9;
+}
+
+/* Solo lectura / deshabilitado */
+.form-field input[readonly],
+.form-field input:disabled,
+.form-field select:disabled,
+.form-field textarea:disabled {
+  color: var(--muted);
+  background-color: #f3f4f6;
+  border-color: var(--border);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Texto de ayuda */
+.form-field small {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--muted-light);
+}
+
+/* Campo con error (se limpia al escribir) */
+.form-field.invalid > label,
+.form-field.invalid legend {
+  color: var(--red);
+}
+
+.form-field.invalid input,
+.form-field.invalid select,
+.form-field.invalid textarea {
+  border-color: #e57373;
+  background-color: #fffafa;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.12);
+}
+
+.form-field.invalid input:not(:placeholder-shown),
+.form-field.invalid textarea:not(:placeholder-shown) {
+  border-color: var(--border-strong);
+  background-color: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Campo con unidad al lado derecho (PSI, V, horas...) */
+.input-group {
+  display: flex;
+  align-items: stretch;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-field .input-group input {
+  flex: 1;
+  min-width: 0;
+  border-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: none;
+}
+
+.input-addon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 56px;
+  justify-content: center;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: #f3f4f6;
+  border: 1px solid var(--border-strong);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  transition: border-color 0.12s ease;
+}
+
+.input-group:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+.input-group:focus-within input,
+.input-group:focus-within .input-addon {
+  border-color: var(--primary);
+}
+
+.form-field.invalid .input-addon {
+  border-color: #e57373;
+}
+
+.form-field.invalid .input-group input:not(:placeholder-shown) + .input-addon {
+  border-color: var(--border-strong);
+}
+
+/* Verificación Conforme / No conforme / No aplica */
+.check-field {
+  min-width: 0;
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.check-field legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 0;
+}
+
+.check-field legend + * {
+  clear: left;
+}
+
+.check-field.non-compliant {
+  background: #fffafa;
+  border-color: #f3c4c4;
+}
+
+.form-field.invalid .check-field {
+  border-color: #e57373;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.12);
+}
+
+/* Botones de opción (radio) con apariencia de control segmentado */
+.choice-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.choice-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.form-field .choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: 0;
+  padding: 6px 4px;
+  font-size: 13px;
+  white-space: nowrap;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-soft);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+/* El círculo de la opción aparece desde 480px; en teléfono el estado se distingue por color */
+.choice::before {
+  content: "";
+  display: none;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1.5px solid #b3bac5;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.choice:hover {
+  border-color: #b3bac5;
+  background: #fbfbfc;
+}
+
+.choice-input:focus-visible + .choice {
+  box-shadow: var(--focus-ring);
+}
+
+.choice-input:checked + .choice::before {
+  border-color: currentColor;
+  box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 8px currentColor;
+}
+
+.choice-input:checked + .choice-ok {
+  color: #166534;
+  background: var(--green-soft);
+  border-color: #86d7a2;
+}
+
+.choice-input:checked + .choice-bad {
+  color: #991b1b;
+  background: var(--red-soft);
+  border-color: #eaa3a3;
+}
+
+.choice-input:checked + .choice-na {
+  color: var(--text-soft);
+  background: #f3f4f6;
+  border-color: #b3bac5;
+}
+
+.anomaly-detail {
+  margin-top: 12px;
+}
+
+.form-field .anomaly-detail label {
+  font-size: 12.5px;
+  color: #991b1b;
+}
+
+/* Formularios apilados (modales) */
+.form .form-field {
+  margin-bottom: 16px;
+}
+
+.form .form-field:last-of-type {
+  margin-bottom: 24px;
+}
+
+.form-actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.form-actions .btn {
+  width: 100%;
+}
+
+@media (min-width: 480px) {
+  .choice::before {
+    display: block;
+  }
+
+  .form-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .form-actions .btn {
+    width: auto;
+  }
+}
+
+@media (min-width: 768px) {
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .form-field textarea {
+    min-height: 84px;
+  }
+
+  .form-field .choice {
+    min-height: 40px;
+  }
+}

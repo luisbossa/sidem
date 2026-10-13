@@ -1,0 +1,31 @@
+<%# Recorrido en curso: listado de sistemas y formulario de cada sistema (features/inspection.js) %>
+<section id="vista-inspeccion" class="view" aria-label="Recorrido de inspección">
+  <div id="vistaListadoSistemas">
+    <header class="route-header">
+      <h2 id="tituloTipoRecorrido">Recorrido de inspección</h2>
+    </header>
+
+    <div id="alertaListado" class="hidden alert alert-error" role="alert"></div>
+    <div id="listaSistemasRecorrido" class="route-system-list"></div>
+
+    <footer class="route-list-actions">
+      <button type="button" class="btn btn-red" data-action="cancel-inspection">Cancelar inspección</button>
+      <p class="route-submit-note">
+        Todos los sistemas deben estar completos o contar con una justificación escrita para enviar el informe al ingeniero.
+      </p>
+      <button type="button" class="btn btn-green" data-action="finish-inspection"><%- icono('enviar') %> Enviar informe al ingeniero</button>
+    </footer>
+  </div>
+
+  <div id="vistaFormularioSistema" class="hidden">
+    <header id="bannerSistema" class="hero">
+      <h2 id="tituloSistema"></h2>
+    </header>
+    <div id="alertaError" class="hidden alert alert-error" role="alert"></div>
+    <div id="contenedorPaso"></div>
+    <footer class="step-footer">
+      <button type="button" class="btn btn-secondary" data-action="back-to-systems"><%- icono('flechaIzquierda') %> Guardar y volver al listado</button>
+      <button type="button" class="btn btn-green" data-action="save-system"><%- icono('check') %> Guardar sistema</button>
+    </footer>
+  </div>
+</section>

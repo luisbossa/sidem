@@ -1,0 +1,56 @@
+/* Tablas con desplazamiento horizontal en pantallas pequeñas. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+  background: #fff;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.data-table th {
+  background: #f1f5f9;
+  color: var(--dark-2);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cell-sub {
+  font-size: 10px;
+  color: var(--muted-light);
+  margin-top: 3px;
+}
+
+.cell-danger {
+  color: #991b1b;
+  font-weight: 600;
+}
+
+@media (min-width: 768px) {
+  .data-table th,
+  .data-table td {
+    padding: 14px 16px;
+  }
+}

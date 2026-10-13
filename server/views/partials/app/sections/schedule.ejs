@@ -1,0 +1,12 @@
+<%# Rol semanal (lo llena features/schedule.js). Solo el ingeniero ve "Programar semana". %>
+<section id="vista-cronograma" class="view" aria-labelledby="tituloVistaCronograma">
+  <article class="panel panel-strong">
+    <header class="panel-header panel-header-amber">
+      <h3 id="tituloVistaCronograma"><%- icono('calendario') %> Cronograma Semanal de Inspección</h3>
+      <button id="btnAgregarSemanaCronograma" type="button" class="btn btn-green btn-sm hidden" data-action="open-schedule-modal">
+        <%- icono('mas') %> Programar semana
+      </button>
+    </header>
+    <div id="cronogramaContenido" class="panel-body"></div>
+  </article>
+</section>

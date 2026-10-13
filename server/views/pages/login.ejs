@@ -1,0 +1,37 @@
+<%# Inicio de sesión (layout: layouts/auth). El envío lo maneja public/js/features/login.js. %>
+<main class="login-layout">
+  <%- include('../partials/login/brand-panel') %>
+
+  <section class="login-form-area" aria-labelledby="tituloLogin">
+    <div class="login-form-box">
+      <h1 id="tituloLogin">Iniciar sesión</h1>
+      <p class="login-sub">Ingrese con las credenciales asignadas por el ingeniero supervisor.</p>
+
+      <form class="login-form" data-submit="login">
+        <div class="form-field">
+          <label for="inputNombreUsuario">Usuario</label>
+          <div class="login-input">
+            <%- icono('usuario', 'login-input-icon') %>
+            <input id="inputNombreUsuario" type="text" placeholder="Ej. jperez" required autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="60" />
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="inputPasswordUsuario">Contraseña</label>
+          <div class="login-input login-input-pass">
+            <%- icono('candado', 'login-input-icon') %>
+            <input id="inputPasswordUsuario" type="password" placeholder="••••••••" required autocomplete="current-password" maxlength="128" />
+            <button type="button" class="login-toggle-pass" data-action="toggle-password" aria-controls="inputPasswordUsuario" aria-pressed="false" aria-label="Mostrar contraseña">
+              <%- icono('ojo', 'icon-eye') %>
+              <%- icono('ojoTachado', 'icon-eye-off') %>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-blue btn-block login-submit">Ingresar</button>
+      </form>
+
+      <p class="login-help">¿No puede ingresar? Contacte al ingeniero supervisor del servicio.</p>
+    </div>
+
+    <p class="login-legal">Uso exclusivo del personal de Ingeniería y Mantenimiento · CCSS</p>
+  </section>
+</main>

@@ -1,0 +1,133 @@
+/* Inicio del inspector: recorridos del día (mañana y tarde). */
+.daily-route-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.route-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 84px;
+  padding: 16px;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.route-option:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.route-option:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.route-morning {
+  --route-color: #1d4ed8;
+  --route-bg: #eff4ff;
+}
+
+.route-afternoon {
+  --route-color: #b45309;
+  --route-bg: #fffbeb;
+}
+
+.route-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid !important;
+  place-items: center;
+  color: var(--route-color);
+  background: var(--route-bg);
+  border-radius: var(--radius-md);
+}
+
+.route-icon .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.route-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.route-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.route-option small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted-light);
+}
+
+/* Acción "Iniciar" con apariencia de botón principal */
+.route-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+  border-radius: var(--radius-sm);
+}
+
+.route-go .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.route-option:hover:not(:disabled) .route-go {
+  background: var(--primary-hover);
+}
+
+/* Recorrido ya enviado hoy */
+.route-option.completed:disabled {
+  cursor: default;
+  opacity: 1;
+  background: var(--surface);
+}
+
+.route-option.completed .route-icon {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.route-option.completed small {
+  color: var(--green);
+  font-weight: 500;
+}
+
+.route-option.completed .route-go {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .daily-route-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .route-option {
+    min-height: 96px;
+    padding: 20px;
+  }
+}

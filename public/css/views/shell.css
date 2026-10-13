@@ -1,0 +1,473 @@
+/* Estructura de la vista /app (server/views/layouts/app.ejs).
+   Teléfono/tableta: barra superior + contenido + navegación inferior fija.
+   Escritorio (≥1024px): barra lateral fija con marca y menú, barra superior y
+   contenido a todo el ancho disponible. */
+:root {
+  --sidebar-w: 248px;
+  --topbar-h: 60px;
+  --bottom-nav-h: 64px;
+  --content-max: 1680px;
+}
+
+.app-page {
+  background: var(--bg);
+}
+
+/* Barra lateral: en móvil solo existe su navegación (como barra inferior) */
+.sidebar {
+  display: contents;
+}
+
+.sidebar-brand,
+.sidebar-foot,
+.side-nav-label {
+  display: none;
+}
+
+/* Marca */
+.brand-mark,
+.topbar-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid !important;
+  place-items: center;
+  color: #fff;
+  background: var(--primary);
+  border-radius: var(--radius-md);
+}
+
+.brand-mark .icon,
+.topbar-mark .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Barra superior */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--topbar-h);
+  padding: 0 var(--gutter);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar-context {
+  display: none;
+  font-size: 12px;
+  color: var(--muted-light);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-status {
+  display: none;
+}
+
+.topbar-date {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* "lunes, 12 de octubre…" → "Lunes, 12 de octubre…" */
+.topbar-date::first-letter {
+  text-transform: uppercase;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-soft);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid #d6e0fb;
+  border-radius: 50%;
+}
+
+.user-text {
+  display: none;
+  line-height: 1.25;
+}
+
+.user-name {
+  display: block;
+  max-width: 200px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* El rol se muestra como texto secundario, no como insignia */
+.topbar .role-badge {
+  display: block;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted-light);
+  background: none;
+  border: 0;
+}
+
+.topbar-logout {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--muted-light);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.topbar-logout:hover:not(:disabled) {
+  color: var(--red);
+  background: var(--red-soft);
+  border-color: #f3c4c4;
+}
+
+.topbar-logout:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.topbar-logout:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.topbar-logout .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Navegación: barra inferior fija en móvil */
+.side-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  gap: 2px;
+  padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.nav-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 54px;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-light);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.nav-item .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.nav-label {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-item.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.nav-item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.nav-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Contenido */
+.app-main {
+  min-width: 0;
+}
+
+.app-page .app {
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 20px var(--gutter) calc(var(--bottom-nav-h) + 24px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Encabezado de página dentro de una vista */
+.page-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.page-desc {
+  margin: 4px 0 0;
+  max-width: 720px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.page-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Títulos de panel y botones con icono */
+.panel-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (min-width: 768px) {
+  .topbar {
+    gap: 20px;
+  }
+
+  .topbar-context {
+    display: block;
+  }
+
+  .topbar h1 {
+    font-size: 17px;
+  }
+
+  .topbar-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-text {
+    display: block;
+  }
+
+  .topbar-user {
+    padding-left: 20px;
+    border-left: 1px solid var(--border);
+  }
+
+  .nav-item {
+    font-size: 12px;
+  }
+
+  .app-page .app {
+    padding-top: 28px;
+  }
+
+  .page-intro {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+}
+
+/* Escritorio: barra lateral fija */
+@media (min-width: 1024px) {
+  .app-layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    color: #cbd5e1;
+    background: #111827;
+    border-right: 1px solid #1f2937;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: var(--topbar-h);
+    padding: 0 20px;
+    border-bottom: 1px solid #1f2937;
+  }
+
+  .brand-text strong {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #fff;
+  }
+
+  .brand-text span {
+    display: block;
+    font-size: 12px;
+    color: #9ca3af;
+  }
+
+  .topbar-mark {
+    display: none !important;
+  }
+
+  .side-nav {
+    position: static;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    padding: 16px 12px;
+    background: transparent;
+    border: 0;
+  }
+
+  .side-nav-label {
+    display: block;
+    margin: 0 0 6px;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6b7280;
+  }
+
+  .nav-item {
+    flex: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #cbd5e1;
+    text-align: left;
+    border-radius: var(--radius-sm);
+  }
+
+  .nav-item .icon {
+    width: 18px;
+    height: 18px;
+    color: #9ca3af;
+  }
+
+  .nav-item:hover:not(:disabled) {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .nav-item.active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .nav-item.active .icon {
+    color: #93b4ff;
+  }
+
+  .sidebar-foot {
+    display: block;
+    padding: 16px 20px 20px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #9ca3af;
+    border-top: 1px solid #1f2937;
+  }
+
+  .sidebar-foot strong {
+    display: block;
+    font-weight: 600;
+    color: #e5e7eb;
+  }
+
+  .app-page .app {
+    padding: 28px var(--gutter) 48px;
+  }
+}

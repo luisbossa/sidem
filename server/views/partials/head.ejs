@@ -1,0 +1,10 @@
+<%# Etiquetas comunes del <head>. Recibe: titulo, hojaEstilos, script, colorTema %>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="<%= colorTema %>" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<title><%= titulo %> · Casa de Máquinas</title>
+<link rel="stylesheet" href="<%= hojaEstilos %>" />
+<% if (script) { %>
+<script type="module" src="<%= script %>"></script>
+<% } %>

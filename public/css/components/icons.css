@@ -1,0 +1,15 @@
+/* Iconos SVG de línea (js/ui/icons.js). Toman el color y tamaño del texto que los rodea. */
+.icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex-shrink: 0;
+  vertical-align: -0.2em;
+}
+
+.icon-wide {
+  width: 2.1em;
+}
+
+[data-icon] {
+  display: inline-flex;
+}

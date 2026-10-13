@@ -1,0 +1,58 @@
+<%# Crear o editar usuario (features/users.js). Los turnos vienen del controlador. %>
+<div id="modalTecnico" class="modal-backdrop hidden" data-backdrop-action="close-user-modal">
+  <section class="modal modal-form" role="dialog" aria-modal="true" aria-labelledby="modalTecnicoTitulo">
+    <header class="modal-header">
+      <h3 id="modalTecnicoTitulo" class="modal-title">Registrar Usuario</h3>
+      <button type="button" class="modal-close" aria-label="Cerrar" data-action="close-user-modal"><%- icono('cerrar') %></button>
+    </header>
+    <div class="modal-body">
+      <form id="formTecnico" class="form" data-submit="save-user">
+        <input type="hidden" id="tecnicoId" />
+        <div class="form-field">
+          <label for="tecnicoNombre">Nombre Completo *</label>
+          <input id="tecnicoNombre" type="text" placeholder="Ej. Ing. Juan Pérez / Tec. Ronald Salas" required maxlength="120" />
+        </div>
+        <div class="form-field">
+          <label for="tecnicoRol">Rol en el Sistema *</label>
+          <select id="tecnicoRol" required data-change="user-role-change">
+            <option value="inspector">Técnico Inspector (Ejecución de Recorridos)</option>
+            <option value="ingeniero">Ingeniero Supervisor (Revisión y Aprobación)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="tecnicoUsuario">Usuario de Acceso *</label>
+          <input id="tecnicoUsuario" type="text" placeholder="Ej. rsalas" required autocomplete="off" maxlength="40" autocapitalize="none" spellcheck="false" />
+          <small>Entre 3 y 40 caracteres: letras sin tilde, números, punto o guion.</small>
+        </div>
+        <div class="form-field">
+          <label for="tecnicoPassword">Contraseña de Acceso *</label>
+          <input id="tecnicoPassword" type="password" placeholder="Defina una clave segura" required autocomplete="new-password" maxlength="128" />
+          <small id="ayudaPassword">Ingrese una contraseña para este usuario.</small>
+        </div>
+        <div class="form-field">
+          <label for="tecnicoCedula">Cédula / Identificación</label>
+          <input id="tecnicoCedula" type="text" placeholder="Ej. 2-0789-0123" maxlength="30" />
+        </div>
+        <div id="contenedorTurnoTecnico" class="form-field">
+          <label for="tecnicoTurno">Turno Habitual *</label>
+          <select id="tecnicoTurno" required>
+            <% turnos.forEach(turno => { %>
+              <option value="<%= turno %>"><%= turno %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="tecnicoEstado">Estado Operativo *</label>
+          <select id="tecnicoEstado" required>
+            <option value="Activo">Activo</option>
+            <option value="Inactivo / Vacaciones">Inactivo / Vacaciones</option>
+          </select>
+        </div>
+        <footer class="form-actions">
+          <button type="button" class="btn btn-secondary" data-action="close-user-modal">Cancelar</button>
+          <button type="submit" class="btn btn-green">Guardar Usuario</button>
+        </footer>
+      </form>
+    </div>
+  </section>
+</div>

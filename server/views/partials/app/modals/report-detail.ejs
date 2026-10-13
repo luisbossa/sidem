@@ -1,0 +1,13 @@
+<%# Detalle de un informe (features/report-detail.js). El botón PDF solo lo muestra el ingeniero. %>
+<div id="modalDetalle" class="modal-backdrop hidden" data-backdrop-action="close-detail">
+  <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+    <header class="modal-header">
+      <h3 id="modalTitulo" class="modal-title">Detalle de Inspección</h3>
+      <div class="modal-header-actions">
+        <button id="btnGenerarPdfInforme" type="button" class="btn btn-red btn-sm hidden" data-action="generate-pdf"><%- icono('documento') %> Generar PDF</button>
+        <button type="button" class="modal-close" aria-label="Cerrar" data-action="close-detail"><%- icono('cerrar') %></button>
+      </div>
+    </header>
+    <div id="detalleContenido" class="modal-body"></div>
+  </section>
+</div>

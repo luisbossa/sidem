@@ -1,0 +1,44 @@
+<%# Inicio del inspector: avisos y recorridos del día %>
+<section id="vista-inicio" class="view" aria-labelledby="tituloRecorridosHoy">
+  <aside id="bannerGuardiaSemanalInspector" class="banner banner-weekly-duty hidden">
+    <span class="banner-icon"><%- icono('calendario') %></span>
+    <div class="banner-text">
+      <strong id="bannerGuardiaTitulo">Rol de Inspección Semanal</strong>
+      <p id="bannerGuardiaMensaje">Cargando asignación de la semana...</p>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" data-action="show-view" data-view="cronograma">Ver rol completo</button>
+  </aside>
+
+  <aside id="bannerAlertaObservaciones" class="banner banner-pending-review hidden" role="alert">
+    <span class="banner-icon"><%- icono('alerta') %></span>
+    <div class="banner-text">
+      <strong>Tienes observaciones pendientes de revisión</strong>
+      <p>El Ingeniero ha devuelto una o más inspecciones con requerimientos. Puedes responder y reenviar el informe.</p>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" data-action="show-view" data-view="devoluciones">Ver informes</button>
+  </aside>
+
+  <header class="page-intro">
+    <div>
+      <h2 id="tituloRecorridosHoy" class="page-title">Recorridos de hoy</h2>
+      <p class="page-desc">Inspección diaria de los 13 sistemas electromecánicos de la Casa de Máquinas. Se realizan dos recorridos obligatorios por día.</p>
+    </div>
+    <p id="estadoRecorridosDia" class="page-meta" aria-live="polite"></p>
+  </header>
+
+  <div class="daily-route-options">
+    <% [
+      { id: 'btnRecorridoManana', ruta: 'manana', clase: 'route-morning', icono: 'sol', titulo: 'Recorrido de la mañana', estadoId: 'estadoRecorridoManana' },
+      { id: 'btnRecorridoTarde', ruta: 'tarde', clase: 'route-afternoon', icono: 'atardecer', titulo: 'Recorrido de la tarde', estadoId: 'estadoRecorridoTarde' }
+    ].forEach(r => { %>
+      <button id="<%= r.id %>" type="button" class="route-option <%= r.clase %>" data-action="start-inspection" data-route="<%= r.ruta %>">
+        <span class="route-icon"><%- icono(r.icono) %></span>
+        <span class="route-text">
+          <span class="route-title"><%= r.titulo %></span>
+          <small id="<%= r.estadoId %>">Disponible</small>
+        </span>
+        <span class="route-go">Iniciar <%- icono('flechaDerecha') %></span>
+      </button>
+    <% }) %>
+  </div>
+</section>

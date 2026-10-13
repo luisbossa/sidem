@@ -1,0 +1,82 @@
+/* Tokens de diseño: colores, tipografía, radios y sombras compartidos.
+   Criterio: superficies neutras, bordes de 1px, un solo color de acento
+   (azul institucional) y los colores de estado solo para comunicar estado.
+   Puntos de quiebre (mobile-first, siempre con min-width):
+     sm  480px  → teléfonos grandes
+     md  768px  → tabletas
+     lg  1024px → escritorio
+     xl  1440px → escritorio amplio */
+:root {
+  /* Color del sistema activo (lo cambia aplicarColores() durante el recorrido) */
+  --theme: #1d4ed8;
+  --theme-dark: #1e40af;
+  --theme-border: #1e40af;
+  --theme-bg: #eff4ff;
+  --theme-header-text: #ffffff;
+
+  /* Neutros */
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-muted: #f8f9fb;
+  --text: #111827;
+  --text-soft: #374151;
+  --muted: #4b5563;
+  --muted-light: #6b7280;
+  --border: #e3e6eb;
+  --border-strong: #cfd4dc;
+  --border-admin: #cfd4dc;
+  --dark: #0f172a;
+  --dark-2: #1e293b;
+  --dark-3: #334155;
+
+  /* Acento (azul institucional) */
+  --primary: #1d4ed8;
+  --primary-hover: #1e40af;
+  --primary-soft: #eff4ff;
+
+  /* Amarillo de seguridad: solo en el login y detalles puntuales */
+  --safety: #facc15;
+  --safety-strong: #ca8a04;
+  --safety-soft: #fef9c3;
+
+  /* Estados */
+  --green: #15803d;
+  --green-soft: #ecfdf3;
+  --red: #b91c1c;
+  --red-soft: #fef2f2;
+  --blue: #1d4ed8;
+  --blue-soft: #eff4ff;
+  --amber: #b45309;
+  --amber-soft: #fffbeb;
+  --purple: #6d28d9;
+
+  /* Tipografía */
+  --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-md: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+
+  --focus-ring: 0 0 0 3px rgba(29, 78, 216, 0.25);
+
+  --gutter: 16px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --gutter: 24px;
+  }
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --gutter: 32px;
+  }
+}
