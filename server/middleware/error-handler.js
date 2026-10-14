@@ -9,6 +9,10 @@ function describir(err) {
     console.warn('[SIDEM] Restricción de la base de datos:', err.message);
     return { estado: 409, mensaje: 'Los datos entran en conflicto con un registro existente.' };
   }
+  if (err.errcode === 8) { // SQLITE_READONLY: la base dejó de admitir escritura (permisos de la carpeta data)
+    console.error('[SIDEM] La base de datos es de solo lectura:', err.message);
+    return { estado: 503, mensaje: 'El servidor no puede guardar datos en este momento. Avise al administrador del sistema.', titulo: 'Base de datos de solo lectura' };
+  }
   console.error('[SIDEM] Error no controlado:', err);
   return { estado: 500, mensaje: 'Error interno del servidor.' };
 }

@@ -13,8 +13,24 @@ export function abrirBaseDatos(ruta, opciones = {}) {
   db.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   if (ruta !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   db.exec(ESQUEMA);
+  verificarEscritura(db, ruta);
   sembrarDatosIniciales(db, opciones);
   return db;
+}
+
+/* Comprueba al arrancar que se puede escribir (limpia las sesiones vencidas). Sin permiso de escritura
+   la app abre y muestra páginas, pero falla al iniciar sesión o guardar: mejor detenerse con un mensaje claro. */
+function verificarEscritura(db, ruta) {
+  try {
+    db.prepare('DELETE FROM sesiones WHERE expira_en <= ?').run(new Date().toISOString());
+  } catch (e) {
+    if (e.errcode !== 8) throw e; // 8 = SQLITE_READONLY
+    throw new Error(
+      `La base de datos ${ruta} es de solo lectura. Dé permiso de "Modificar" sobre la carpeta ` +
+      `${path.dirname(ruta)} a la cuenta que ejecuta Node (en IIS: IIS AppPool\\<nombre del Application Pool>).`,
+      { cause: e }
+    );
+  }
 }
 
 /* Ejecuta fn dentro de una transacción: todo se guarda o nada se guarda */
