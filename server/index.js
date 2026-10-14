@@ -8,7 +8,7 @@ const app = crearApp(db);
 
 const servidor = app.listen(config.puerto, () => {
   console.log(`[SIDEM] Base de datos: ${config.rutaBaseDatos}`);
-  console.log(`[SIDEM] Servidor listo en http://localhost:${config.puerto}`);
+  console.log(`[SIDEM] Servidor listo en ${/^\d+$/.test(String(config.puerto)) ? `http://localhost:${config.puerto}` : config.puerto}`);
 });
 
 /* Cierre ordenado: termina las solicitudes en curso y cierra la base */

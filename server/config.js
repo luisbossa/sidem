@@ -5,11 +5,15 @@ import { fileURLToPath } from 'node:url';
 const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // En Vercel el disco del proyecto es de solo lectura: solo /tmp admite escritura
 const enVercel = Boolean(process.env.VERCEL);
+// En IIS, iisnode define IISNODE_VERSION y entrega en PORT una tubería con nombre (\\.\pipe\...), no un número
+const enIIS = Boolean(process.env.IISNODE_VERSION);
 
 export const config = {
   raiz,
   enVercel,
-  puerto: Number(process.env.PORT) || 3000,
+  // Detrás de un proxy (Vercel o IIS) la IP real del cliente llega en X-Forwarded-For
+  detrasDeProxy: enVercel || enIIS,
+  puerto: process.env.PORT || 3000,
   // Archivo SQLite (se crea con sus tablas y datos iniciales si no existe)
   rutaBaseDatos: process.env.SIDEM_DB || (enVercel ? '/tmp/sidem.db' : path.join(raiz, 'data', 'sidem.db')),
   carpetaPublica: path.join(raiz, 'public'),

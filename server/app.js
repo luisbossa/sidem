@@ -27,8 +27,8 @@ export function crearApp(db) {
   app.locals.icono = icono; // los mismos iconos SVG que usa el navegador
 
   app.disable('x-powered-by');
-  // Detrás del proxy de Vercel, req.ip debe salir de X-Forwarded-For (bloqueo de login por IP)
-  if (config.enVercel) app.set('trust proxy', true);
+  // Detrás del proxy (Vercel o IIS), req.ip debe salir de X-Forwarded-For (bloqueo de login por IP)
+  if (config.detrasDeProxy) app.set('trust proxy', true);
   app.use(cabecerasSeguridad);
   app.use(express.json({ limit: '1mb' }));
   app.use(cargarSesion(modelos));
