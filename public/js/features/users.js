@@ -2,7 +2,8 @@
    el servidor nunca las devuelve. */
 import { $, escapar } from '../core/dom.js';
 import { icono } from '../ui/icons.js';
-import { leerUsuarios, leerRegistros, guardarUsuario, sincronizar } from '../data/storage.js';
+import { leerUsuarios, leerRegistros, guardarUsuario, sincronizar, leerAjustes, guardarAjustes, leerRecorridosAbiertos } from '../data/storage.js';
+import { formatearFechaCorta, formatearHoraExacta, etiquetaTipoRecorrido } from '../core/format.js';
 import { mostrarAlertaVisual } from '../ui/dialogs.js';
 
 let guardando = false;
@@ -34,6 +35,7 @@ function plantillaFila(u, inspecciones) {
 }
 
 export function renderListaTecnicos() {
+  renderRecorridosAbiertos();
   const usuarios = leerUsuarios();
   const inspecciones = leerRegistros();
   const div = $('tecnicosContenido');
@@ -52,6 +54,46 @@ export function renderListaTecnicos() {
         <tbody>${usuarios.map(u => plantillaFila(u, inspecciones)).join('')}</tbody>
       </table>
     </div>`;
+}
+
+/* Recorridos sin terminar: interruptor para que otro técnico los continúe y listado (solo lectura) */
+function renderRecorridosAbiertos() {
+  const casilla = $('chkPermitirTomaRecorridos');
+  if (!casilla) return;
+  casilla.checked = leerAjustes().permitirTomaRecorridos;
+
+  const abiertos = leerRecorridosAbiertos();
+  $('recorridosAbiertosContenido').innerHTML = abiertos.length ? `
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Recorrido</th><th>Iniciado por</th><th>A cargo de</th><th>Sistemas iniciados</th><th>Última actividad</th></tr></thead>
+        <tbody>${abiertos.map(r => `
+          <tr>
+            <td>${etiquetaTipoRecorrido(r.tipoRecorrido)} · ${escapar(formatearFechaCorta(r.iniciadoEnISO))}</td>
+            <td>${escapar(r.iniciadoPor)}<br><small>${escapar(formatearHoraExacta(r.iniciadoEnISO))}</small></td>
+            <td>${escapar(r.responsable)}</td>
+            <td>${r.sistemasIniciados}</td>
+            <td>${escapar(formatearHoraExacta(r.actualizadoEnISO))}</td>
+          </tr>`).join('')}</tbody>
+      </table>
+    </div>` : '<p class="empty-state">No hay recorridos sin terminar en este momento.</p>';
+}
+
+export async function cambiarPermisoTomaRecorridos(casilla) {
+  const valor = casilla.checked;
+  casilla.disabled = true;
+  try {
+    await guardarAjustes({ permitirTomaRecorridos: valor });
+  } catch (error) {
+    casilla.checked = !valor;
+    await mostrarAlertaVisual(error.titulo || 'No se pudo guardar el ajuste', error.message, 'advertencia');
+    return;
+  } finally {
+    casilla.disabled = false;
+  }
+  await mostrarAlertaVisual('Ajuste guardado', valor
+    ? 'Los técnicos ya pueden continuar un recorrido que otro dejó a medias, confirmando su usuario y contraseña.'
+    : 'Solo el técnico que inicia un recorrido puede terminarlo.', 'exito');
 }
 
 export function actualizarCamposPorRol() {

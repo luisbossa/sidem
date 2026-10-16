@@ -10,6 +10,7 @@ import { crearControladorCronograma } from '../controllers/schedule.js';
 import { crearControladorInspecciones } from '../controllers/inspections.js';
 import { crearControladorCancelaciones } from '../controllers/cancellations.js';
 import { crearControladorRecorridos } from '../controllers/route-drafts.js';
+import { crearControladorAjustes } from '../controllers/settings.js';
 
 export function rutasApi(modelos) {
   const auth = crearControladorAuth(modelos);
@@ -19,6 +20,7 @@ export function rutasApi(modelos) {
   const inspecciones = crearControladorInspecciones(modelos);
   const cancelaciones = crearControladorCancelaciones(modelos);
   const recorridos = crearControladorRecorridos(modelos);
+  const ajustesGenerales = crearControladorAjustes(modelos);
 
   const ingeniero = requiereRol('ingeniero');
   const inspector = requiereRol('inspector');
@@ -56,10 +58,19 @@ export function rutasApi(modelos) {
   api.get('/cancelaciones', requiereSesion, cancelaciones.listar);
   api.post('/cancelaciones', inspector, cancelaciones.crear);
 
-  // Recorrido en curso
+  // Recorrido en curso (borrador del técnico responsable)
   api.get('/progreso', inspector, recorridos.leer);
+  api.post('/progreso/iniciar', inspector, recorridos.iniciar);
   api.put('/progreso', inspector, recorridos.guardar);
   api.delete('/progreso', inspector, recorridos.eliminar);
+
+  // Recorridos sin terminar: otro técnico puede continuarlos si el ingeniero lo habilitó
+  api.get('/recorridos-abiertos', requiereSesion, recorridos.listarAbiertos);
+  api.post('/recorridos-abiertos/:id/tomar', inspector, recorridos.tomar);
+
+  // Ajustes generales
+  api.get('/ajustes', requiereSesion, ajustesGenerales.leer);
+  api.put('/ajustes', ingeniero, ajustesGenerales.guardar);
 
   api.use((req, res, next) => next(noEncontrado('Ruta de la API no encontrada.')));
   return api;

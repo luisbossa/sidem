@@ -27,7 +27,7 @@ export class Cancelaciones {
     return filas.map(convertir);
   }
 
-  /* Registra la cancelación y descarta el borrador del técnico en una sola transacción */
+  /* Registra la cancelación y cierra el recorrido abierto del técnico en una sola transacción */
   crear({ inspectorId, tipoRecorrido, horaInicio, fechaCancelacion, duracionSegundos, justificacion, sistemasIniciados }) {
     const id = 'canc-' + crypto.randomUUID();
     enTransaccion(this.db, () => {
@@ -35,7 +35,7 @@ export class Cancelaciones {
         INSERT INTO cancelaciones (id, inspector_id, tipo_recorrido, hora_inicio, fecha_cancelacion, duracion_segundos, justificacion, sistemas_iniciados)
         VALUES (:id, :inspectorId, :tipoRecorrido, :horaInicio, :fechaCancelacion, :duracionSegundos, :justificacion, :sistemasIniciados)`)
         .run({ id, inspectorId, tipoRecorrido, horaInicio, fechaCancelacion, duracionSegundos, justificacion, sistemasIniciados: JSON.stringify(sistemasIniciados) });
-      this.db.prepare('DELETE FROM recorridos_en_curso WHERE usuario_id = ?').run(inspectorId);
+      this.db.prepare('DELETE FROM recorridos_abiertos WHERE responsable_id = ?').run(inspectorId);
     });
     return convertir(this.db.prepare(`${SELECT} WHERE c.id = ?`).get(id));
   }

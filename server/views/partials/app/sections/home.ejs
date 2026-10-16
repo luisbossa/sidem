@@ -41,4 +41,13 @@
       </button>
     <% }) %>
   </div>
+
+  <%# Recorridos que otro técnico dejó a medias (features/inspection.js) %>
+  <section id="bloqueRecorridosSinTerminar" class="unfinished-routes hidden" aria-labelledby="tituloRecorridosSinTerminar">
+    <header class="unfinished-routes-header">
+      <h3 id="tituloRecorridosSinTerminar"><%- icono('reloj') %> Recorridos sin terminar</h3>
+      <p id="notaRecorridosSinTerminar" class="page-desc"></p>
+    </header>
+    <div id="listaRecorridosSinTerminar" class="unfinished-routes-list"></div>
+  </section>
 </section>

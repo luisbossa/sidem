@@ -55,7 +55,7 @@ function plantillaTablaInspecciones(lista) {
           ${lista.map(r => `
             <tr>
               <td>${escapar(formatearFechaCompleta(r.fechaISO || r.horaInicioISO))}</td>
-              <td>${escapar(r.inspector || 'Técnico')}</td>
+              <td>${escapar(r.inspector || 'Técnico')}${r.iniciadoPor ? `<br><small>Iniciado por ${escapar(r.iniciadoPor)}</small>` : ''}</td>
               <td><strong>${etiquetaTipoRecorrido(r.tipoRecorrido, { vacio: '—' })}</strong></td>
               <td>${escapar(formatearHoraExacta(r.horaInicioISO))} - ${escapar(r.horaFinISO ? formatearHoraExacta(r.horaFinISO) : '—')}</td>
               <td>${formatearSegundos(r.duracionSegundos)}</td>

@@ -91,3 +91,66 @@ export function solicitarJustificacionCancelacion() {
     }, 50);
   });
 }
+
+/* Pide usuario y contraseña. "verificar(usuario, password)" es asíncrona: si lanza un error,
+   el diálogo sigue abierto y muestra el mensaje. Resuelve con el resultado de verificar, o null si se cancela. */
+export function solicitarCredenciales(titulo, mensaje, verificar, textoConfirmar = 'Confirmar') {
+  return new Promise(resolve => {
+    prepararDialogo('info', 'usuarios', titulo);
+    $('dialogoMensaje').innerHTML = `
+      <form id="formCredenciales" class="form dialog-form" novalidate>
+        <p id="txtCredencialesMensaje"></p>
+        <div class="form-field">
+          <label for="txtCredencialUsuario">Su usuario</label>
+          <input id="txtCredencialUsuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="60" />
+        </div>
+        <div class="form-field">
+          <label for="txtCredencialPassword">Su contraseña</label>
+          <input id="txtCredencialPassword" type="password" autocomplete="current-password" maxlength="128" />
+        </div>
+        <small id="errorCredenciales" class="dialog-error hidden"></small>
+      </form>`;
+    $('txtCredencialesMensaje').textContent = mensaje;
+    $('dialogoBotones').innerHTML = `
+      <button id="btnCredencialesCancelar" type="button" class="btn btn-secondary">Cancelar</button>
+      <button id="btnCredencialesConfirmar" type="submit" form="formCredenciales" class="btn btn-primary"></button>`;
+    $('btnCredencialesConfirmar').textContent = textoConfirmar;
+
+    const mostrarError = texto => {
+      $('errorCredenciales').textContent = texto;
+      $('errorCredenciales').classList.remove('hidden');
+    };
+
+    $('btnCredencialesCancelar').onclick = () => {
+      cerrarDialogo();
+      resolve(null);
+    };
+    $('formCredenciales').onsubmit = async e => {
+      e.preventDefault();
+      const usuario = $('txtCredencialUsuario').value.trim();
+      const password = $('txtCredencialPassword').value;
+      if (!usuario || !password) {
+        mostrarError('Escriba su usuario y su contraseña.');
+        return;
+      }
+      const boton = $('btnCredencialesConfirmar');
+      boton.disabled = true;
+      try {
+        const resultado = await verificar(usuario, password);
+        cerrarDialogo();
+        resolve(resultado);
+      } catch (error) {
+        mostrarError(error.message);
+        $('txtCredencialPassword').value = '';
+        $('txtCredencialPassword').focus();
+      } finally {
+        boton.disabled = false;
+      }
+    };
+    abrirDialogo();
+    setTimeout(() => {
+      const campo = $('txtCredencialUsuario');
+      if (campo) campo.focus();
+    }, 50);
+  });
+}

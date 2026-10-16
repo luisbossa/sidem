@@ -2,7 +2,7 @@
 import { ErrorHttp } from '../utils/errors.js';
 
 function describir(err) {
-  if (err instanceof ErrorHttp) return { estado: err.estado, mensaje: err.message, titulo: err.titulo };
+  if (err instanceof ErrorHttp) return { estado: err.estado, mensaje: err.message, titulo: err.titulo, codigo: err.codigo };
   if (err.type === 'entity.parse.failed') return { estado: 400, mensaje: 'El cuerpo de la solicitud no es JSON válido.' };
   if (err.type === 'entity.too.large') return { estado: 413, mensaje: 'La solicitud es demasiado grande.' };
   if (/constraint failed/i.test(err.message || '')) {
@@ -19,9 +19,9 @@ function describir(err) {
 
 // eslint-disable-next-line no-unused-vars
 export function manejarErrores(err, req, res, next) {
-  const { estado, mensaje, titulo } = describir(err);
+  const { estado, mensaje, titulo, codigo } = describir(err);
   if (req.originalUrl.startsWith('/api/')) {
-    return res.status(estado).json({ error: mensaje, titulo: titulo || undefined });
+    return res.status(estado).json({ error: mensaje, titulo: titulo || undefined, codigo: codigo || undefined });
   }
   res.status(estado).render('pages/error', {
     layout: 'layouts/auth',

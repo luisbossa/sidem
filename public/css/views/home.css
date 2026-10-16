@@ -120,6 +120,71 @@
   display: none;
 }
 
+/* Recorrido que tiene otro técnico (en curso o sin terminar) */
+.route-option.taken:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.route-option.taken small {
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.route-option.taken .route-go {
+  display: none;
+}
+
+/* Recorridos sin terminar de otros técnicos */
+.unfinished-routes {
+  margin-top: 24px;
+}
+
+.unfinished-routes-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.unfinished-routes-header .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--amber);
+}
+
+.unfinished-routes-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.unfinished-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--amber-soft);
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-lg);
+}
+
+.unfinished-route strong {
+  display: block;
+  font-size: 14.5px;
+}
+
+.unfinished-route small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 @media (min-width: 768px) {
   .daily-route-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));

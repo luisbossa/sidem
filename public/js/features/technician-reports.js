@@ -53,10 +53,12 @@ function plantillaFiltros(meses, totalFiltrados, total) {
 
 function plantillaInforme(r) {
   const p = presentacionEstado(r.estadoRevision);
-  const devuelta = r.estadoRevision === 'Con observaciones';
+  // Solo responde las observaciones quien completó el recorrido
+  const conObservaciones = r.estadoRevision === 'Con observaciones';
+  const devuelta = conObservaciones && r.inspectorId === estado.usuarioSesion.id;
 
   const revision = r.ingenieroRevisor ? `
-    <div class="verdict-review ${devuelta ? 'verdict-review-returned' : ''}">
+    <div class="verdict-review ${conObservaciones ? 'verdict-review-returned' : ''}">
       <strong class="verdict-review-title">Dictamen por: ${escapar(r.ingenieroRevisor)} (${escapar(formatearFechaCompleta(r.fechaRevisionISO))})</strong>
       <div class="verdict-review-body">
         ${r.observacionesIngeniero
@@ -82,6 +84,7 @@ function plantillaInforme(r) {
         <div><strong>Fecha:</strong> ${escapar(formatearFechaCompleta(r.fechaISO || r.horaInicioISO))}</div>
         <div><strong>Recorrido:</strong> ${etiquetaTipoRecorrido(r.tipoRecorrido, { conIcono: false })}</div>
         <div><strong>Horario:</strong> ${escapar(formatearHoraExacta(r.horaInicioISO))} - ${escapar(r.horaFinISO ? formatearHoraExacta(r.horaFinISO) : '—')}</div>
+        ${r.iniciadoPor ? '<div><strong>Iniciado por:</strong> ' + escapar(r.iniciadoPor) + ' · <strong>Completado por:</strong> ' + escapar(r.inspector) + '</div>' : ''}
         <div><strong>Duración:</strong> ${formatearSegundos(r.duracionSegundos)}</div>
       </div>
       ${revision}
@@ -97,7 +100,7 @@ export function renderDevolucionesInspector() {
   if (!estado.usuarioSesion) return;
   const div = $('devolucionesContenido');
   const misRegistros = leerRegistros()
-    .filter(r => r.inspectorId === estado.usuarioSesion.id)
+    .filter(r => r.inspectorId === estado.usuarioSesion.id || r.iniciadoPorId === estado.usuarioSesion.id)
     .sort((a, b) => new Date(b.fechaISO || b.horaInicioISO) - new Date(a.fechaISO || a.horaInicioISO));
 
   if (!misRegistros.length) {

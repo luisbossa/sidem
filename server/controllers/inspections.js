@@ -1,42 +1,45 @@
 /* Controlador de inspecciones: envío del informe, revisión del ingeniero y respuesta del técnico. */
 import { procesarInforme } from '../services/inspection-report.js';
-import { texto, opcion, instante } from '../utils/validation.js';
+import { recorridoACargo } from './route-drafts.js';
+import { texto, opcion } from '../utils/validation.js';
 import { solicitudInvalida, noEncontrado, prohibido, conflicto } from '../utils/errors.js';
-import { ahoraISO, diaLocal } from '../utils/dates.js';
+import { ahoraISO } from '../utils/dates.js';
 
-const TIPOS = ['manana', 'tarde'];
 const NOMBRE_TIPO = { manana: 'mañana', tarde: 'tarde' };
 
-export function crearControladorInspecciones({ inspecciones }) {
+export function crearControladorInspecciones({ inspecciones, recorridos }) {
   return {
-    /* El ingeniero ve todos los informes; el técnico solo los suyos */
+    /* El ingeniero ve todos los informes; el técnico, los que completó o inició */
     listar(req, res) {
       res.json(inspecciones.listar(req.usuario.rol === 'ingeniero' ? null : req.usuario.id));
     },
 
     buscar(req, res) {
       const informe = inspecciones.buscar(req.params.id);
-      if (!informe || (req.usuario.rol !== 'ingeniero' && informe.inspectorId !== req.usuario.id)) throw noEncontrado('El informe no existe.');
+      const participo = informe && (informe.inspectorId === req.usuario.id || informe.iniciadoPorId === req.usuario.id);
+      if (!informe || (req.usuario.rol !== 'ingeniero' && !participo)) throw noEncontrado('El informe no existe.');
       res.json(informe);
     },
 
-    /* Envío del informe por el técnico: el servidor valida y calcula duración y resultado */
+    /* Envío del informe por el responsable del recorrido abierto: el servidor valida y calcula
+       duración y resultado. Tipo, día, hora de inicio y quién lo inició salen del recorrido abierto. */
     crear(req, res) {
       const cuerpo = req.body || {};
-      const tipoRecorrido = opcion(cuerpo.tipoRecorrido, 'Tipo de recorrido', TIPOS);
-      const inicio = instante(cuerpo.horaInicioISO, 'Hora de inicio');
+      const recorrido = recorridoACargo(recorridos, cuerpo.recorridoId, req.usuario);
+      const { tipoRecorrido, fechaLocal } = recorrido;
+      const inicio = new Date(recorrido.iniciadoEnISO);
       const fin = new Date();
-      if (inicio > new Date(fin.getTime() + 60000)) throw solicitudInvalida('La hora de inicio no puede estar en el futuro.');
 
-      const fechaLocal = diaLocal(fin);
-      if (inspecciones.existeRecorridoDelDia(req.usuario.id, tipoRecorrido, fechaLocal)) {
-        throw conflicto(`El recorrido de la ${NOMBRE_TIPO[tipoRecorrido]} ya fue enviado hoy. Estará disponible nuevamente mañana.`, 'Recorrido ya completado');
+      if (inspecciones.existeRecorridoDelDia(tipoRecorrido, fechaLocal)) {
+        throw conflicto(`El recorrido de la ${NOMBRE_TIPO[tipoRecorrido]} de ese día ya fue enviado.`, 'Recorrido ya completado');
       }
 
       const { valores, sistemas, resultado } = procesarInforme(cuerpo);
       const informe = inspecciones.crear({
+        recorridoId: recorrido.id,
         encabezado: {
           inspectorId: req.usuario.id,
+          iniciadoPorId: recorrido.iniciadoPorId === req.usuario.id ? null : recorrido.iniciadoPorId,
           tipoRecorrido,
           fechaLocal,
           horaInicio: inicio.toISOString(),
@@ -62,7 +65,7 @@ export function crearControladorInspecciones({ inspecciones }) {
       res.json(inspecciones.registrarRevision(informe.id, { estadoRevision, ingenieroId: req.usuario.id, observaciones, fecha: ahoraISO() }));
     },
 
-    /* Respuesta del técnico autor a una devolución */
+    /* Respuesta a una devolución: la envía el técnico que completó el recorrido */
     responder(req, res) {
       const informe = inspecciones.buscar(req.params.id);
       if (!informe || informe.inspectorId !== req.usuario.id) throw noEncontrado('El informe no existe.');

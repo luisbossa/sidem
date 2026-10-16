@@ -5,6 +5,13 @@ export class ErrorHttp extends Error {
     super(mensaje);
     this.estado = estado;
     this.titulo = titulo;
+    // Identificador opcional para que el navegador reaccione a un caso concreto
+    this.codigo = '';
+  }
+
+  conCodigo(codigo) {
+    this.codigo = codigo;
+    return this;
   }
 }
 

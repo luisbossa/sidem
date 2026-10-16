@@ -9,15 +9,23 @@ const cache = {
   cronograma: [],
   registros: [],
   cancelaciones: [],
-  progreso: null
+  progreso: null,
+  recorridosAbiertos: [],
+  recorridosHoy: {},
+  ajustes: { permitirTomaRecorridos: false }
 };
+
+/* El servidor responde este código cuando el recorrido ya no es del técnico (lo continuó otro o se cerró) */
+const RECORRIDO_NO_DISPONIBLE = 'recorrido-no-disponible';
+export const esRecorridoNoDisponible = e => e instanceof ErrorApi && e.codigo === RECORRIDO_NO_DISPONIBLE;
 
 /* Error de la API con mensaje y título listos para mostrar al usuario */
 export class ErrorApi extends Error {
-  constructor(mensaje, { estado = 0, titulo = '' } = {}) {
+  constructor(mensaje, { estado = 0, titulo = '', codigo = '' } = {}) {
     super(mensaje);
     this.estado = estado;
     this.titulo = titulo;
+    this.codigo = codigo;
   }
 }
 
@@ -42,7 +50,7 @@ async function api(metodo, ruta, cuerpo, { redirigirSiNoHaySesion = true, keepal
   if (respuesta.status === 401 && redirigirSiNoHaySesion) {
     location.replace(URL_LOGIN);
   }
-  throw new ErrorApi(datos?.error || `Error del servidor (${respuesta.status}).`, { estado: respuesta.status, titulo: datos?.titulo || '' });
+  throw new ErrorApi(datos?.error || `Error del servidor (${respuesta.status}).`, { estado: respuesta.status, titulo: datos?.titulo || '', codigo: datos?.codigo || '' });
 }
 
 /* Reemplaza (o agrega al inicio) un elemento de una lista de la caché */
@@ -79,6 +87,9 @@ export async function sincronizar() {
   cache.cronograma = datos.cronograma;
   cache.registros = datos.registros;
   cache.cancelaciones = datos.cancelaciones;
+  cache.recorridosAbiertos = datos.recorridosAbiertos || [];
+  cache.recorridosHoy = datos.recorridosHoy || {};
+  cache.ajustes = datos.ajustes || cache.ajustes;
   // No pisa un borrador local que todavía no se envió al servidor
   if (!progresoPendiente) cache.progreso = datos.progreso;
   return datos.usuario;
@@ -148,11 +159,47 @@ export async function crearCancelacion(datos) {
   return creada;
 }
 
+/* Ajustes generales */
+export const leerAjustes = () => cache.ajustes;
+
+export async function guardarAjustes(ajustes) {
+  cache.ajustes = await api('PUT', '/ajustes', ajustes);
+  return cache.ajustes;
+}
+
+/* Recorridos de hoy y recorridos sin terminar (de cualquier técnico) */
+export const leerRecorridosHoy = () => cache.recorridosHoy;
+export const leerRecorridosAbiertos = () => cache.recorridosAbiertos;
+
+/* Reserva el recorrido en el servidor; devuelve su borrador inicial */
+export async function iniciarRecorridoApi(tipoRecorrido) {
+  const borrador = await api('POST', '/progreso/iniciar', { tipoRecorrido });
+  cache.progreso = borrador;
+  progresoPendiente = false;
+  return borrador;
+}
+
+/* Continúa el recorrido de otro técnico confirmando el usuario y la contraseña propios.
+   Un 401 aquí es "contraseña incorrecta", no "sesión vencida": no redirige al login. */
+export async function tomarRecorrido(id, usuario, password) {
+  const borrador = await api('POST', `/recorridos-abiertos/${encodeURIComponent(id)}/tomar`, { usuario, password }, { redirigirSiNoHaySesion: false });
+  cache.progreso = borrador;
+  progresoPendiente = false;
+  cache.recorridosAbiertos = cache.recorridosAbiertos.filter(r => r.id !== id);
+  return borrador;
+}
+
 /* Recorrido en curso: se guarda en el servidor con una pequeña espera para agrupar cambios */
 let temporizadorProgreso = null;
 let progresoPendiente = false;
+let avisoRecorridoPerdido = () => {};
 
 export const leerProgreso = () => cache.progreso;
+
+/* Función que se llama si, al guardar, el servidor indica que el recorrido ya no es del técnico */
+export function alPerderRecorrido(fn) {
+  avisoRecorridoPerdido = fn;
+}
 
 function enviarProgreso(keepalive = false) {
   clearTimeout(temporizadorProgreso);
@@ -160,7 +207,14 @@ function enviarProgreso(keepalive = false) {
   progresoPendiente = false;
   const datos = cache.progreso;
   const peticion = datos ? api('PUT', '/progreso', datos, { keepalive }) : api('DELETE', '/progreso', undefined, { keepalive });
-  return peticion.catch(e => console.warn('[SIDEM] No se pudo guardar el recorrido en curso:', e.message));
+  return peticion.catch(e => {
+    if (esRecorridoNoDisponible(e)) {
+      cache.progreso = null;
+      avisoRecorridoPerdido(e);
+      return;
+    }
+    console.warn('[SIDEM] No se pudo guardar el recorrido en curso:', e.message);
+  });
 }
 
 export function guardarProgreso(datos) {

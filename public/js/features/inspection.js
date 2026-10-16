@@ -1,10 +1,15 @@
-/* Recorrido del inspector: inicio, listado de sistemas, captura, validación, envío y cancelación. */
+/* Recorrido del inspector: inicio, listado de sistemas, captura, validación, envío y cancelación.
+   Hay un recorrido de mañana y uno de tarde por día para todos los técnicos. Si el ingeniero lo habilita,
+   un técnico puede continuar (con su usuario y contraseña) el recorrido que otro dejó a medias. */
 import { $, escapar } from '../core/dom.js';
 import { estado } from '../core/state.js';
-import { claveFechaLocal } from '../core/format.js';
+import { formatearFechaCorta, formatearHoraExacta, fechaLocalISO } from '../core/format.js';
 import { SISTEMAS } from '../data/systems.js';
-import { leerRegistros, crearInspeccion, crearCancelacion, guardarProgreso, eliminarProgreso } from '../data/storage.js';
-import { mostrarAlertaVisual, solicitarJustificacionCancelacion } from '../ui/dialogs.js';
+import {
+  crearInspeccion, crearCancelacion, guardarProgreso, eliminarProgreso, sincronizar, iniciarRecorridoApi, tomarRecorrido,
+  leerRecorridosHoy, leerRecorridosAbiertos, leerAjustes, alPerderRecorrido, esRecorridoNoDisponible
+} from '../data/storage.js';
+import { mostrarAlertaVisual, solicitarJustificacionCancelacion, solicitarCredenciales } from '../ui/dialogs.js';
 import { mostrarVista } from '../ui/navigation.js';
 import { icono } from '../ui/icons.js';
 import { actualizarBloqueoNavegacionTecnico } from './session.js';
@@ -18,35 +23,97 @@ const CLASE_ESTADO_SISTEMA = {
 };
 
 let enviandoInforme = false;
+let iniciandoRecorrido = false;
 
-/* Recorridos diarios (mañana / tarde) */
-function recorridoRealizadoHoy(tipo) {
-  if (!estado.usuarioSesion) return false;
-  const hoy = claveFechaLocal(new Date());
-  return leerRegistros().some(r =>
-    r.inspectorId === estado.usuarioSesion.id &&
-    r.tipoRecorrido === tipo &&
-    claveFechaLocal(r.horaFinISO || r.fechaISO || r.horaInicioISO) === hoy
-  );
+const NOMBRE_TIPO = { manana: 'mañana', tarde: 'tarde' };
+
+/* Recorridos diarios (mañana / tarde): estado para toda la Casa de Máquinas */
+const estadoRecorridoHoy = tipo => leerRecorridosHoy()[tipo] || { estado: 'libre' };
+
+function textoEstadoRecorrido(r) {
+  if (r.estado === 'enviado') {
+    return r.iniciadoPor && r.iniciadoPor !== r.completadoPor
+      ? `Completado hoy por ${r.completadoPor} (lo inició ${r.iniciadoPor})`
+      : `Completado hoy por ${r.completadoPor}`;
+  }
+  if (r.estado === 'abierto') return `En curso · a cargo de ${r.responsable}`;
+  return 'Disponible';
 }
 
 export function actualizarOpcionesRecorridoDiario() {
   if (!estado.usuarioSesion || estado.usuarioSesion.rol !== 'inspector') return;
-  const mananaCompleta = recorridoRealizadoHoy('manana');
-  const tardeCompleta = recorridoRealizadoHoy('tarde');
-  const btnManana = $('btnRecorridoManana');
-  const btnTarde = $('btnRecorridoTarde');
-  if (!btnManana || !btnTarde) return;
+  const opciones = { manana: ['btnRecorridoManana', 'estadoRecorridoManana'], tarde: ['btnRecorridoTarde', 'estadoRecorridoTarde'] };
+  let completados = 0;
 
-  btnManana.disabled = mananaCompleta;
-  btnTarde.disabled = tardeCompleta;
-  btnManana.classList.toggle('completed', mananaCompleta);
-  btnTarde.classList.toggle('completed', tardeCompleta);
-  $('estadoRecorridoManana').textContent = mananaCompleta ? 'Completado hoy · disponible mañana' : 'Disponible';
-  $('estadoRecorridoTarde').textContent = tardeCompleta ? 'Completado hoy · disponible mañana' : 'Disponible';
-  $('estadoRecorridosDia').textContent = mananaCompleta && tardeCompleta
+  for (const [tipo, [idBoton, idEstado]] of Object.entries(opciones)) {
+    const boton = $(idBoton);
+    if (!boton) return;
+    const r = estadoRecorridoHoy(tipo);
+    if (r.estado === 'enviado') completados++;
+    boton.disabled = r.estado !== 'libre';
+    boton.classList.toggle('completed', r.estado === 'enviado');
+    boton.classList.toggle('taken', r.estado === 'abierto');
+    $(idEstado).textContent = textoEstadoRecorrido(r);
+  }
+  $('estadoRecorridosDia').textContent = completados === 2
     ? 'Los dos recorridos obligatorios de hoy fueron completados.'
-    : `Recorridos completados hoy: ${Number(mananaCompleta) + Number(tardeCompleta)} de 2.`;
+    : `Recorridos completados hoy: ${completados} de 2.`;
+  renderRecorridosSinTerminar();
+}
+
+/* Recorridos que otro técnico inició y no terminó */
+function renderRecorridosSinTerminar() {
+  const bloque = $('bloqueRecorridosSinTerminar');
+  if (!bloque) return;
+  const ajenos = leerRecorridosAbiertos().filter(r => r.responsableId !== estado.usuarioSesion.id);
+  bloque.classList.toggle('hidden', !ajenos.length);
+  if (!ajenos.length) return;
+
+  const permitido = leerAjustes().permitirTomaRecorridos;
+  $('notaRecorridosSinTerminar').textContent = permitido
+    ? 'Puede continuar un recorrido que otro técnico no terminó. Se le pedirá su usuario y contraseña, y quedará registrado quién lo inició y quién lo completó.'
+    : 'El ingeniero no ha habilitado que un técnico continúe el recorrido de otro.';
+
+  const hoy = fechaLocalISO(new Date());
+  $('listaRecorridosSinTerminar').innerHTML = ajenos.map(r => {
+    const aCargo = r.responsableId !== r.iniciadoPorId ? ` · ahora a cargo de ${escapar(r.responsable)}` : '';
+    return `
+      <article class="unfinished-route">
+        <div>
+          <strong>Recorrido de la ${NOMBRE_TIPO[r.tipoRecorrido]}${r.fechaLocal === hoy ? ' de hoy' : ` · ${escapar(formatearFechaCorta(r.iniciadoEnISO))}`}</strong>
+          <small>Iniciado por ${escapar(r.iniciadoPor)} el ${escapar(formatearFechaCorta(r.iniciadoEnISO))} a las ${escapar(formatearHoraExacta(r.iniciadoEnISO))}${aCargo}</small>
+          <small>${r.sistemasIniciados} de ${SISTEMAS.length} sistemas iniciados · última actividad ${escapar(formatearHoraExacta(r.actualizadoEnISO))}</small>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" data-action="take-route" data-id="${escapar(r.id)}" ${permitido ? '' : 'disabled'}>
+          ${icono('flechaDerecha')} Continuar este recorrido
+        </button>
+      </article>`;
+  }).join('');
+}
+
+/* Abre en pantalla un borrador del servidor (recorrido nuevo, restaurado o continuado de otro técnico) */
+export function entrarEnRecorrido(borrador) {
+  estado.inspeccionActiva = borrador.inspeccionActiva;
+  estado.pasoActual = borrador.pasoActual || 0;
+  estado.respuestas = borrador.respuestas || {};
+  estado.justificacionesSistemas = borrador.justificacionesSistemas || {};
+  estado.ordenRecorrido = borrador.ordenRecorrido || [];
+  estado.mostrarJustificacionesPendientes = Boolean(borrador.mostrarJustificacionesPendientes);
+  $('estadoCabecera').textContent = 'Inspección en curso';
+  actualizarBloqueoNavegacionTecnico();
+  mostrarVista('inspeccion');
+  iniciarCronometro();
+  mostrarListadoSistemas();
+}
+
+/* Vuelve a pedir el estado de los recorridos y repinta el inicio */
+async function refrescarRecorridos() {
+  try {
+    await sincronizar();
+  } catch (e) {
+    console.warn('[SIDEM] No se pudieron actualizar los recorridos:', e.message);
+  }
+  actualizarOpcionesRecorridoDiario();
 }
 
 export async function iniciarInspeccion(tipoRecorrido) {
@@ -54,33 +121,50 @@ export async function iniciarInspeccion(tipoRecorrido) {
     await mostrarAlertaVisual('Acceso Restringido', 'Solo el usuario con rol de Inspector puede iniciar la inspección diaria.', 'advertencia');
     return;
   }
-  if (!['manana', 'tarde'].includes(tipoRecorrido)) return;
-  if (recorridoRealizadoHoy(tipoRecorrido)) {
-    await mostrarAlertaVisual('Recorrido ya completado', `El recorrido de la ${tipoRecorrido === 'manana' ? 'mañana' : 'tarde'} ya fue enviado hoy. Estará disponible nuevamente mañana.`, 'advertencia');
-    actualizarOpcionesRecorridoDiario();
+  if (!NOMBRE_TIPO[tipoRecorrido] || iniciandoRecorrido) return;
+
+  // El servidor reserva el recorrido: si otro técnico ya lo inició o lo envió, responde con el motivo
+  iniciandoRecorrido = true;
+  let borrador;
+  try {
+    borrador = await iniciarRecorridoApi(tipoRecorrido);
+  } catch (e) {
+    await mostrarAlertaVisual(e.titulo || 'No se pudo iniciar el recorrido', e.message, 'advertencia');
+    await refrescarRecorridos();
+    return;
+  } finally {
+    iniciandoRecorrido = false;
+  }
+  entrarEnRecorrido(borrador);
+}
+
+/* Otro técnico continúa un recorrido a medias: confirma su identidad con usuario y contraseña */
+export async function continuarRecorridoAjeno(id) {
+  if (estado.inspeccionActiva) return;
+  const r = leerRecorridosAbiertos().find(x => x.id === id);
+  if (!r) return;
+  const borrador = await solicitarCredenciales(
+    'Continuar recorrido',
+    `Va a continuar el recorrido de la ${NOMBRE_TIPO[r.tipoRecorrido]} que inició ${r.iniciadoPor}. Escriba su propio usuario y contraseña. Quedará registrado que ${r.iniciadoPor} lo inició y que usted lo completó.`,
+    (usuario, password) => tomarRecorrido(id, usuario, password),
+    'Continuar recorrido'
+  );
+  if (!borrador) {
+    await refrescarRecorridos();
     return;
   }
-
-  const ahora = new Date();
-  estado.inspeccionActiva = {
-    id: 'insp-' + Date.now(),
-    inspector: estado.usuarioSesion.nombre,
-    tipoRecorrido,
-    fechaISO: ahora.toISOString(),
-    horaInicioISO: ahora.toISOString()
-  };
-  estado.respuestas = {};
-  estado.justificacionesSistemas = {};
-  estado.ordenRecorrido = [];
-  estado.mostrarJustificacionesPendientes = false;
-  estado.pasoActual = 0;
-  guardarEstadoEnProgreso();
-  $('estadoCabecera').textContent = 'Inspección en curso';
-  actualizarBloqueoNavegacionTecnico();
-  mostrarVista('inspeccion');
-  iniciarCronometro();
-  mostrarListadoSistemas();
+  entrarEnRecorrido(borrador);
 }
+
+/* Otro técnico continuó este recorrido (o ya se cerró): se sale sin guardar nada más */
+async function salirDeRecorridoPerdido(error) {
+  if (!estado.inspeccionActiva) return;
+  limpiarRecorridoEnPantalla();
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.add('hidden'));
+  await mostrarAlertaVisual(error.titulo || 'Recorrido no disponible', error.message, 'advertencia');
+  mostrarVista('inicio');
+}
+alPerderRecorrido(salirDeRecorridoPerdido);
 
 /* Colores del sistema activo */
 function aplicarColores(c) {
@@ -374,15 +458,16 @@ export async function finalizarInspeccion() {
   // El servidor valida el informe, calcula duración y resultado, y lo guarda en la base de datos
   if (enviandoInforme) return;
   enviandoInforme = true;
+  let creado;
   try {
-    await crearInspeccion({
-      tipoRecorrido: estado.inspeccionActiva.tipoRecorrido,
-      horaInicioISO: estado.inspeccionActiva.horaInicioISO,
+    creado = await crearInspeccion({
+      recorridoId: estado.inspeccionActiva.id,
       datos: { ...estado.respuestas },
       justificacionesSistemas: { ...estado.justificacionesSistemas },
       ordenRecorrido: [...estado.ordenRecorrido]
     });
   } catch (e) {
+    if (esRecorridoNoDisponible(e)) return salirDeRecorridoPerdido(e);
     await mostrarAlertaVisual(e.titulo || 'No se pudo enviar el informe', e.message, 'advertencia');
     return;
   } finally {
@@ -395,7 +480,8 @@ export async function finalizarInspeccion() {
   actualizarBloqueoNavegacionTecnico();
 
   $('estadoCabecera').textContent = 'Inspección enviada';
-  await mostrarAlertaVisual('Inspección Finalizada', 'La inspección diaria ha sido registrada con éxito y enviada a la supervisión del Ingeniero.', 'exito');
+  const compartido = creado.iniciadoPor ? ` Quedó registrado que ${creado.iniciadoPor} lo inició y que usted lo completó.` : '';
+  await mostrarAlertaVisual('Inspección Finalizada', `La inspección diaria ha sido registrada con éxito y enviada a la supervisión del Ingeniero.${compartido}`, 'exito');
   mostrarVista('devoluciones');
 }
 
@@ -407,12 +493,12 @@ export async function cancelarInspeccion() {
 
   try {
     await crearCancelacion({
-      tipoRecorrido: estado.inspeccionActiva.tipoRecorrido || '',
-      horaInicioISO: estado.inspeccionActiva.horaInicioISO,
+      recorridoId: estado.inspeccionActiva.id,
       justificacion,
       sistemasIniciados: [...estado.ordenRecorrido]
     });
   } catch (e) {
+    if (esRecorridoNoDisponible(e)) return salirDeRecorridoPerdido(e);
     await mostrarAlertaVisual(e.titulo || 'No se pudo cancelar el recorrido', e.message, 'advertencia');
     return;
   }
@@ -421,16 +507,21 @@ export async function cancelarInspeccion() {
 }
 
 function cancelarInspeccionSinConfirmacion() {
+  limpiarRecorridoEnPantalla();
+  eliminarProgreso();
+  mostrarVista('inicio');
+}
+
+/* Quita el recorrido de la pantalla y desbloquea la navegación (no toca el servidor) */
+function limpiarRecorridoEnPantalla() {
   clearInterval(estado.intervaloCronometro);
   estado.inspeccionActiva = null;
   estado.respuestas = {};
   estado.justificacionesSistemas = {};
   estado.ordenRecorrido = [];
   estado.mostrarJustificacionesPendientes = false;
-  eliminarProgreso();
   actualizarBloqueoNavegacionTecnico();
   $('estadoCabecera').textContent = 'Inspector activo';
-  mostrarVista('inicio');
 }
 
 /* Cronómetro (el tiempo real se calcula desde horaInicioISO) */

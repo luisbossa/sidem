@@ -36,7 +36,9 @@ function plantillaAuditoria(r) {
   const item = (titulo, contenido) => `<div class="audit-item"><strong>${titulo}</strong>${contenido}</div>`;
   return `
     <div class="audit-card">
-      ${item('Inspector Responsable', `<span>${escapar(r.inspector || 'Técnico')}</span>`)}
+      ${r.iniciadoPor
+        ? `${item('Iniciado por', `<span>${escapar(r.iniciadoPor)}</span>`)}${item('Completado por', `<span>${escapar(r.inspector || 'Técnico')}</span>`)}`
+        : item('Inspector Responsable', `<span>${escapar(r.inspector || 'Técnico')}</span>`)}
       ${item('Fecha de Inspección', `<span>${escapar(formatearFechaCompleta(r.fechaISO || r.horaInicioISO))}</span>`)}
       ${item('Tipo de Recorrido', `<span>${etiquetaTipoRecorrido(r.tipoRecorrido)}</span>`)}
       ${item('Condición Técnica', `<div><span class="tag ${r.resultado === 'Conforme' ? 'tag-green' : 'tag-red'}">${escapar(r.resultado)}</span></div>`)}

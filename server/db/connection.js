@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { sembrarDatosIniciales } from './seed.js';
+import { migrar } from './migrations.js';
 
 const ESQUEMA = fs.readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 
@@ -14,6 +15,7 @@ export function abrirBaseDatos(ruta, opciones = {}) {
   if (ruta !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   db.exec(ESQUEMA);
   verificarEscritura(db, ruta);
+  migrar(db);
   sembrarDatosIniciales(db, opciones);
   return db;
 }

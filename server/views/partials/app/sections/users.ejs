@@ -7,4 +7,21 @@
     </header>
     <div id="tecnicosContenido" class="panel-body"></div>
   </article>
+
+  <%# Control de recorridos a medias: si otro técnico puede continuarlos %>
+  <article class="panel panel-strong route-takeover-panel">
+    <header class="panel-header panel-header-blue">
+      <h3><%- icono('reloj') %> Recorridos sin terminar</h3>
+    </header>
+    <div class="panel-body">
+      <label class="switch-field" for="chkPermitirTomaRecorridos">
+        <input id="chkPermitirTomaRecorridos" type="checkbox" data-change="toggle-route-takeover" />
+        <span>
+          <strong>Permitir que otro técnico complete un recorrido a medias</strong>
+          <small>El técnico que lo continúa debe confirmar con su usuario y contraseña. El informe registra quién lo inició y quién lo completó.</small>
+        </span>
+      </label>
+      <div id="recorridosAbiertosContenido"></div>
+    </div>
+  </article>
 </section>

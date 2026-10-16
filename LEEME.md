@@ -44,7 +44,7 @@ El servidor sigue el patrón **Modelo – Vista – Controlador**:
 
 | Capa | Carpeta | Responsabilidad |
 |---|---|---|
-| **Modelo** | `server/models/` | Clases con el SQL de cada entidad (`Usuarios`, `Sesiones`, `SemanasRol`, `Inspecciones`, `Cancelaciones`, `RecorridosEnCurso`). Solo hablan con SQLite. |
+| **Modelo** | `server/models/` | Clases con el SQL de cada entidad (`Usuarios`, `Sesiones`, `SemanasRol`, `Inspecciones`, `Cancelaciones`, `RecorridosAbiertos`, `Ajustes`). Solo hablan con SQLite. |
 | **Vista** | `server/views/` | Plantillas **EJS** con layouts (**express-ejs-layouts**): `layouts/auth` (login y errores) y `layouts/app` (barra lateral, barra superior y modales). Las páginas incluyen *partials* por sección. |
 | **Controlador** | `server/controllers/` | Reciben la petición, validan los datos, aplican permisos y reglas, usan los modelos y responden JSON (API) o renderizan una vista (páginas). |
 | Rutas | `server/routes/` | `web.js` (páginas) y `api.js` (API REST): solo asocian cada URL con su middleware y su controlador. |
@@ -84,7 +84,8 @@ server/
     schedule-week.js        SemanasRol
     inspection.js           Inspecciones (con valores, sistemas y conversación)
     cancellation.js         Cancelaciones
-    route-draft.js          RecorridosEnCurso
+    route-draft.js          RecorridosAbiertos (recorridos iniciados y no enviados)
+    settings.js             Ajustes (opciones del ingeniero)
   views/                    VISTAS (EJS)
     layouts/                auth.ejs, app.ejs
     pages/                  login.ejs, app.ejs, error.ejs
@@ -96,7 +97,7 @@ server/
         modals/             report-detail, dashboard-detail, user-form, schedule-form
   controllers/              CONTROLADORES
     pages.js                Páginas (renderiza las vistas)
-    auth.js, data.js, users.js, schedule.js, inspections.js, cancellations.js, route-drafts.js
+    auth.js, data.js, users.js, schedule.js, inspections.js, cancellations.js, route-drafts.js, settings.js
   routes/
     web.js                  Rutas de páginas
     api.js                  Rutas de la API
@@ -130,12 +131,13 @@ data/                       Base SQLite (se crea al arrancar; no se versiona)
 | `usuarios` | Personal con acceso: rol (`inspector` / `ingeniero`), usuario, hash de contraseña, turno, estado |
 | `sesiones` | Sesiones abiertas (hash SHA-256 del token y vencimiento) |
 | `semanas_rol` | Rol semanal: técnico asignado (`tecnico_id`) por semana |
-| `inspecciones` | Informe de cada recorrido: técnico, mañana/tarde, horas, resultado y estado de revisión. Un recorrido de mañana y uno de tarde por técnico y día |
+| `inspecciones` | Informe de cada recorrido: técnico, mañana/tarde, horas, resultado y estado de revisión. Un recorrido de mañana y uno de tarde por día para toda la Casa de Máquinas. `inspector_id` es quien lo completó; `iniciado_por_id`, quien lo inició si fue otro técnico |
 | `inspeccion_valores` | Lectura (`valor`) o verificación (`Conforme` / `No conforme` / `No aplica` + `detalle`) de cada campo |
 | `inspeccion_sistemas` | Orden en que se recorrió cada sistema y justificación de los no completados |
 | `inspeccion_mensajes` | Conversación: observaciones del ingeniero y respuestas del técnico |
 | `cancelaciones` | Recorridos cancelados con su justificación |
-| `recorridos_en_curso` | Borrador del recorrido en curso de cada técnico (se restaura al recargar o cambiar de equipo) |
+| `recorridos_abiertos` | Recorridos iniciados y aún no enviados: quién lo inició, quién lo tiene a cargo y el borrador (se restaura al recargar o cambiar de equipo) |
+| `ajustes` | Opciones del ingeniero, por ejemplo si un técnico puede continuar el recorrido de otro |
 
 Los usuarios no se borran: se marcan como *Inactivo / Vacaciones* para conservar su historial.
 
@@ -150,12 +152,16 @@ Todas las rutas responden JSON; los errores tienen la forma `{ "error": "mensaje
 | `GET/POST /api/usuarios` · `PUT /api/usuarios/:id` | ingeniero | Gestión de usuarios |
 | `GET /api/cronograma` | con sesión | Rol semanal |
 | `POST /api/cronograma` · `PUT/DELETE /api/cronograma/:id` | ingeniero | Programar, editar y eliminar semanas |
-| `GET /api/inspecciones` · `GET /api/inspecciones/:id` | con sesión | El ingeniero ve todos; el técnico, solo los suyos |
+| `GET /api/inspecciones` · `GET /api/inspecciones/:id` | con sesión | El ingeniero ve todos; el técnico, los que completó o inició |
 | `POST /api/inspecciones` | técnico | Enviar informe (el servidor valida y calcula el resultado) |
 | `PUT /api/inspecciones/:id/revision` | ingeniero | Aprobar o devolver con observaciones |
 | `POST /api/inspecciones/:id/respuesta` | técnico autor | Responder una devolución |
 | `GET/POST /api/cancelaciones` | con sesión / técnico | Recorridos cancelados |
-| `GET/PUT/DELETE /api/progreso` | técnico | Borrador del recorrido en curso |
+| `POST /api/progreso/iniciar` | técnico | Iniciar el recorrido de mañana o de tarde (uno por día para todos) |
+| `GET/PUT/DELETE /api/progreso` | técnico | Borrador del recorrido que el técnico tiene a cargo |
+| `GET /api/recorridos-abiertos` | con sesión | Recorridos sin terminar |
+| `POST /api/recorridos-abiertos/:id/tomar` | técnico | Continuar el recorrido de otro (requiere el ajuste activo y el usuario y contraseña de quien lo toma) |
+| `GET /api/ajustes` · `PUT /api/ajustes` | con sesión / ingeniero | Ajustes generales |
 
 ## Seguridad
 

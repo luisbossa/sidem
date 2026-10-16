@@ -37,9 +37,11 @@ CREATE TABLE IF NOT EXISTS semanas_rol (
 CREATE INDEX IF NOT EXISTS idx_semanas_inicio ON semanas_rol (inicio);
 
 -- Informe de un recorrido enviado al ingeniero.
+-- inspector_id: técnico que lo completó y envió; iniciado_por_id: quien lo inició, si fue otro técnico.
 CREATE TABLE IF NOT EXISTS inspecciones (
   id                      TEXT PRIMARY KEY,
   inspector_id            TEXT NOT NULL REFERENCES usuarios (id),
+  iniciado_por_id         TEXT REFERENCES usuarios (id),
   tipo_recorrido          TEXT NOT NULL CHECK (tipo_recorrido IN ('manana', 'tarde')),
   fecha_local             TEXT NOT NULL,
   hora_inicio             TEXT NOT NULL,
@@ -104,9 +106,24 @@ CREATE TABLE IF NOT EXISTS cancelaciones (
   sistemas_iniciados TEXT NOT NULL DEFAULT '[]'
 );
 
--- Borrador del recorrido en curso de cada técnico (se restaura al recargar o cambiar de equipo).
-CREATE TABLE IF NOT EXISTS recorridos_en_curso (
-  usuario_id     TEXT PRIMARY KEY REFERENCES usuarios (id) ON DELETE CASCADE,
-  datos          TEXT NOT NULL,
-  actualizado_en TEXT NOT NULL
+-- Recorridos iniciados y aún no enviados ni cancelados: uno de mañana y uno de tarde por día.
+-- responsable_id es quien lo tiene ahora: el que lo inició u otro técnico que lo continuó.
+CREATE TABLE IF NOT EXISTS recorridos_abiertos (
+  id              TEXT PRIMARY KEY,
+  tipo_recorrido  TEXT NOT NULL CHECK (tipo_recorrido IN ('manana', 'tarde')),
+  fecha_local     TEXT NOT NULL,
+  iniciado_por_id TEXT NOT NULL REFERENCES usuarios (id),
+  iniciado_en     TEXT NOT NULL,
+  responsable_id  TEXT NOT NULL REFERENCES usuarios (id),
+  datos           TEXT NOT NULL,
+  actualizado_en  TEXT NOT NULL,
+  UNIQUE (tipo_recorrido, fecha_local)
+);
+-- Un técnico lleva un solo recorrido a la vez
+CREATE UNIQUE INDEX IF NOT EXISTS idx_recorridos_responsable ON recorridos_abiertos (responsable_id);
+
+-- Ajustes generales que define el ingeniero (clave → valor).
+CREATE TABLE IF NOT EXISTS ajustes (
+  clave TEXT PRIMARY KEY,
+  valor TEXT NOT NULL
 );

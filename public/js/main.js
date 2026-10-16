@@ -5,7 +5,7 @@ import { mostrarVista } from './ui/navigation.js';
 import { pintarIconos } from './ui/icons.js';
 import { cerrarSesion, restaurarProgreso } from './features/session.js';
 import {
-  iniciarInspeccion, cancelarInspeccion, finalizarInspeccion, abrirSistema, guardarJustificacionSistema,
+  iniciarInspeccion, continuarRecorridoAjeno, cancelarInspeccion, finalizarInspeccion, abrirSistema, guardarJustificacionSistema,
   volverAlListadoSistemas, guardarSistemaCompletado, cambioVerificacion
 } from './features/inspection.js';
 import { cambiarFiltroInformesTecnico } from './features/technician-reports.js';
@@ -13,7 +13,7 @@ import { cambiarFiltroHistorial, filtrarHistorialPorTecnico, quitarFiltroTecnico
 import {
   abrirModalAsignarSemana, cerrarModalCronograma, guardarSemanaCronograma, eliminarSemanaCronograma, actualizarFinSemanaAutomatica
 } from './features/schedule.js';
-import { abrirModalTecnico, cerrarModalTecnico, guardarTecnico, actualizarCamposPorRol } from './features/users.js';
+import { abrirModalTecnico, cerrarModalTecnico, guardarTecnico, actualizarCamposPorRol, cambiarPermisoTomaRecorridos } from './features/users.js';
 import { verDetalle, cerrarDetalle, guardarRevisionIngeniero, guardarRespuestaYReenviar, generarPdfInforme } from './features/report-detail.js';
 import { cambiarPeriodoDashboard } from './features/dashboard/render.js';
 import {
@@ -29,6 +29,7 @@ registrarAcciones({
 
     // Recorrido
     'start-inspection': el => iniciarInspeccion(el.dataset.route),
+    'take-route': el => continuarRecorridoAjeno(el.dataset.id),
     'cancel-inspection': () => cancelarInspeccion(),
     'finish-inspection': () => finalizarInspeccion(),
     'open-system': el => abrirSistema(Number(el.dataset.index)),
@@ -75,6 +76,7 @@ registrarAcciones({
     'filter-history': el => cambiarFiltroHistorial(el.dataset.filter, el.value),
     'filter-duration': el => abrirDetalleDuracion(el.value),
     'user-role-change': () => actualizarCamposPorRol(),
+    'toggle-route-takeover': el => cambiarPermisoTomaRecorridos(el),
     'schedule-start-change': () => actualizarFinSemanaAutomatica()
   },
 

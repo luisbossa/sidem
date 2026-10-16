@@ -1,5 +1,5 @@
 /* Sesión dentro de la app: menú por rol, banners del inspector, cierre de sesión
-   y restauración al recargar. El inicio de sesión vive en features/login.js. */
+   y restauración del recorrido al recargar. El inicio de sesión vive en features/login.js. */
 import { $ } from '../core/dom.js';
 import { estado } from '../core/state.js';
 import { URL_LOGIN } from '../core/paths.js';
@@ -7,7 +7,7 @@ import { formatearFechaCompleta, formatearFechaCorta } from '../core/format.js';
 import { sincronizar, cerrarSesionApi, leerRegistros, obtenerSemanaVigente, leerProgreso } from '../data/storage.js';
 import { mostrarAlertaVisual } from '../ui/dialogs.js';
 import { mostrarVista } from '../ui/navigation.js';
-import { iniciarCronometro, mostrarListadoSistemas } from './inspection.js';
+import { entrarEnRecorrido } from './inspection.js';
 
 const BOTONES_INSPECTOR = ['btnIrInicioInspector', 'btnIrDevolucionesInspector', 'btnIrCronogramaInspector'];
 const BOTONES_INGENIERO = ['btnIrDashboardIngeniero', 'btnIrHistorialIngeniero', 'btnIrCronogramaIngeniero', 'btnIrTecnicosIngeniero'];
@@ -113,18 +113,7 @@ export async function restaurarProgreso() {
   aplicarSesionUsuario();
 
   if (estado.usuarioSesion.rol !== 'inspector') return;
-  const cache = leerProgreso();
-  if (cache && cache.inspeccionActiva) {
-    estado.inspeccionActiva = cache.inspeccionActiva;
-    estado.pasoActual = cache.pasoActual || 0;
-    estado.respuestas = cache.respuestas || {};
-    estado.justificacionesSistemas = cache.justificacionesSistemas || {};
-    estado.ordenRecorrido = cache.ordenRecorrido || [];
-    estado.mostrarJustificacionesPendientes = Boolean(cache.mostrarJustificacionesPendientes);
-    $('estadoCabecera').textContent = 'Inspección en curso';
-    actualizarBloqueoNavegacionTecnico();
-    mostrarVista('inspeccion');
-    iniciarCronometro();
-    mostrarListadoSistemas();
-  }
+  // Solo vuelve el recorrido del que el técnico es responsable (si otro lo continuó, ya no le llega)
+  const borrador = leerProgreso();
+  if (borrador && borrador.inspeccionActiva) entrarEnRecorrido(borrador);
 }
