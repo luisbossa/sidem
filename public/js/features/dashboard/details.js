@@ -6,7 +6,7 @@ import { leerRegistros } from '../../data/storage.js';
 import { verDetalle } from '../report-detail.js';
 import {
   registrosPeriodoDashboard, textoPeriodo, extraerSerieConsumo, resumenSerie, agruparSerieDashboard,
-  formatoNumeroDashboard, etiquetaGrupoConsumo, calcularCumplimiento, registrosFallasSistema,
+  formatoNumeroDashboard, formatoConsumo, formatoNivelTanque, esConsumoDiesel, tieneBancos, extraerSeriesBancos, unirSeriesBancos, etiquetaGrupoConsumo, calcularCumplimiento, registrosFallasSistema,
   obtenerDetalleNoConformidades
 } from './calculations.js';
 
@@ -162,18 +162,102 @@ export function abrirDetalleFallas(nombreCodificado) {
 }
 
 /* Consumos (agua, diésel y gases) */
-function renderGraficaDetalleConsumo(grupos, unidad, color, modo) {
+function renderGraficaDetalleConsumo(grupos, unidad, color, modo, formato) {
   if (!grupos.length) return '<div class="dashboard-empty">No existen datos para graficar.</div>';
   const max = Math.max(...grupos.map(g => g.valor), 1);
   const promedio = grupos.reduce((a, g) => a + g.valor, 0) / grupos.length;
   const avgPct = Math.max(0, Math.min(100, (promedio / max) * 100));
   return `<div class="detail-chart-scroll"><div class="detail-chart">
-    <div class="detail-average-line" style="--avg:${avgPct}%"><span>Promedio ${formatoNumeroDashboard(promedio)} ${unidad}</span></div>
-    ${grupos.map(g => `<div class="detail-bar-wrap"><div class="detail-bar" style="--bar-height:${Math.max(3, (g.valor / max) * 100)}%; --bar-color:${color};" data-value="${escapar(formatoNumeroDashboard(g.valor))} ${unidad}"></div><span class="detail-bar-label">${escapar(etiquetaGrupoConsumo(g.clave, modo))}</span></div>`).join('')}
+    <div class="detail-average-line" style="--avg:${avgPct}%"><span>Promedio ${escapar(formato(promedio))} ${unidad}</span></div>
+    ${grupos.map(g => `<div class="detail-bar-wrap"><div class="detail-bar" style="--bar-height:${Math.max(3, (g.valor / max) * 100)}%; --bar-color:${color};" data-value="${escapar(formato(g.valor))} ${unidad}"></div><span class="detail-bar-label">${escapar(etiquetaGrupoConsumo(g.clave, modo))}</span></div>`).join('')}
   </div></div>`;
 }
 
+/* Bancos de gases: colores de la paleta categórica validada (azul y naranja, distinguibles con daltonismo) */
+const BANCOS = [
+  { lado: 'izquierdo', nombre: 'Banco izquierdo', color: '#2a78d6' },
+  { lado: 'derecho', nombre: 'Banco derecho', color: '#eb6834' }
+];
+
+/* Gráfica con una barra por banco en cada día o mes. El valor de cada barra se ve al pasar el cursor */
+function renderGraficaBancos(gruposPorBanco, unidad, modo) {
+  const claves = [...new Set(BANCOS.flatMap(b => gruposPorBanco[b.lado].map(g => g.clave)))].sort();
+  if (!claves.length) return '<div class="dashboard-empty">No existen datos para graficar.</div>';
+  const valorDe = (lado, clave) => gruposPorBanco[lado].find(g => g.clave === clave)?.valor ?? null;
+  const max = Math.max(...claves.flatMap(k => BANCOS.map(b => valorDe(b.lado, k) || 0)), 1);
+  const leyenda = BANCOS.map(b => `<span class="detail-legend-item"><span class="detail-legend-swatch" style="--bar-color:${b.color};"></span>${b.nombre}</span>`).join('');
+  return `
+    <div class="detail-legend" aria-label="Leyenda">${leyenda}</div>
+    <div class="detail-chart-scroll"><div class="detail-chart">
+      ${claves.map(k => `
+        <div class="detail-bar-wrap">
+          <div class="detail-bar-pair">
+            ${BANCOS.map(b => {
+              const v = valorDe(b.lado, k);
+              const texto = `${b.nombre}: ${v === null ? 'sin lectura' : `${formatoNumeroDashboard(v)} ${unidad}`}`;
+              return `<div class="detail-bar detail-bar-paired ${v === null ? 'detail-bar-empty' : ''}" style="--bar-height:${v === null ? 0 : Math.max(3, (v / max) * 100)}%; --bar-color:${b.color};" title="${escapar(texto)}" aria-label="${escapar(texto)}"></div>`;
+            }).join('')}
+          </div>
+          <span class="detail-bar-label">${escapar(etiquetaGrupoConsumo(k, modo))}</span>
+        </div>`).join('')}
+    </div></div>`;
+}
+
+/* Detalle del oxígeno y del aire instrumental: cada banco por separado y el total de ambos */
+function abrirDetalleBancos(campoId, tituloCodificado, unidad, modo) {
+  const titulo = decodeURIComponent(tituloCodificado);
+  const idsPeriodo = new Set(registrosPeriodoDashboard().map(r => r.id));
+  // Se compara con la lectura anterior aunque esté fuera del período
+  const series = extraerSeriesBancos(leerRegistros(), campoId);
+  BANCOS.forEach(b => { series[b.lado] = series[b.lado].filter(x => idsPeriodo.has(x.registro.id)); });
+  const porInforme = unirSeriesBancos(series);
+  const gruposPorBanco = Object.fromEntries(BANCOS.map(b => [b.lado, agruparSerieDashboard(series[b.lado], modo)]));
+  const esMensual = modo === 'mensual';
+  const conUnidad = v => `${v} <span class="value-unit">${unidad}</span>`;
+  const total = serie => serie.reduce((a, x) => a + x.valor, 0);
+  const numero = v => formatoNumeroDashboard(v);
+
+  const celdaBanco = x => x
+    ? `<strong>${numero(x.valor)} ${unidad}</strong><br><small class="text-muted-em">${numero(x.lecturaAnterior)} → ${numero(x.lecturaActual)}</small>`
+    : '<span class="text-muted-em">—</span>';
+
+  let filas;
+  if (esMensual) {
+    const claves = [...new Set(BANCOS.flatMap(b => gruposPorBanco[b.lado].map(g => g.clave)))].sort().reverse();
+    const valor = (lado, clave) => gruposPorBanco[lado].find(g => g.clave === clave)?.valor || 0;
+    const informes = clave => porInforme.filter(x => agruparSerieDashboard([x], 'mensual')[0].clave === clave).length;
+    filas = claves.map(k => `<tr><td><strong>${escapar(etiquetaGrupoConsumo(k, 'mensual'))}</strong></td>${BANCOS.map(b => `<td>${numero(valor(b.lado, k))} ${unidad}</td>`).join('')}<td><strong>${numero(valor('izquierdo', k) + valor('derecho', k))} ${unidad}</strong></td><td>${informes(k)}</td></tr>`).join('');
+  } else {
+    filas = porInforme.slice().reverse().map(x => `<tr><td>${escapar(formatearFechaCompleta(x.fecha))}</td><td>${escapar(x.registro.inspector || 'Técnico')}</td>${BANCOS.map(b => `<td>${celdaBanco(x[b.lado])}</td>`).join('')}<td><strong>${numero(x.valor)} ${unidad}</strong></td><td>${botonInforme(x.registro.id, 'secondary')}</td></tr>`).join('');
+  }
+
+  const pestana = (valor, texto) => `<button type="button" class="detail-tab ${modo === valor ? 'active' : ''}" data-action="open-usage-detail" data-field="${campoId}" data-title="${tituloCodificado}" data-unit="${escapar(unidad)}" data-color="" data-mode="${valor}">${texto}</button>`;
+  const encabezados = esMensual
+    ? '<th>Mes</th><th>Banco izquierdo</th><th>Banco derecho</th><th>Total</th><th>Informes</th>'
+    : '<th>Fecha</th><th>Técnico</th><th>Banco izquierdo<br><small>consumo · lectura</small></th><th>Banco derecho<br><small>consumo · lectura</small></th><th>Total</th><th>Origen</th>';
+  const totalAmbos = total(porInforme);
+
+  abrirModalDashboard(titulo, `
+    ${barraHerramientas(escapar(titulo), textoPeriodo(), `<div class="detail-tabs">${pestana('diario', 'Diario')}${pestana('mensual', 'Mensual')}</div>`)}
+    <div class="detail-summary-grid">
+      ${tarjetaResumen('Banco izquierdo · total', conUnidad(series.izquierdo.length ? numero(total(series.izquierdo)) : '—'))}
+      ${tarjetaResumen('Banco derecho · total', conUnidad(series.derecho.length ? numero(total(series.derecho)) : '—'))}
+      ${tarjetaResumen('Ambos bancos · total', conUnidad(porInforme.length ? numero(totalAmbos) : '—'))}
+      ${tarjetaResumen('Promedio por informe (ambos)', conUnidad(porInforme.length ? numero(totalAmbos / porInforme.length) : '—'))}
+    </div>
+    <section class="detail-chart-card">
+      <div class="detail-chart-head">
+        <div><h4>${esMensual ? 'Comportamiento mensual por banco' : 'Comportamiento diario por banco'}</h4><span>${esMensual ? 'Reducción de presión agrupada por mes' : 'Reducción de presión agrupada por día'}</span></div>
+        <span>Pase el cursor sobre una barra para ver su valor</span>
+      </div>
+      ${renderGraficaBancos(gruposPorBanco, unidad, modo)}
+    </section>
+    ${tablaDashboard(esMensual ? 'Resumen mensual' : 'Registros diarios', `${porInforme.length} registro(s)`,
+      filas ? tabla(encabezados, filas) : '<div class="dashboard-empty">No existen datos registrados.</div>')}`);
+}
+
 export function abrirDetalleConsumo(campoId, tituloCodificado, unidad, color, modo = 'diario') {
+  if (tieneBancos(campoId)) return abrirDetalleBancos(campoId, tituloCodificado, unidad, modo);
   const titulo = decodeURIComponent(tituloCodificado);
   const registrosPeriodo = registrosPeriodoDashboard();
   const esEstimado = campoId.startsWith('__');
@@ -186,30 +270,34 @@ export function abrirDetalleConsumo(campoId, tituloCodificado, unidad, color, mo
   const minimo = valores.length ? Math.min(...valores) : null;
   const esMensual = modo === 'mensual';
   const conUnidad = v => `${v} <span class="value-unit">${unidad}</span>`;
+  // Diésel en fracciones de tanque (1/4, 1/2…); los demás consumos en números
+  const formato = v => formatoConsumo(v, campoId);
+  const diesel = esConsumoDiesel(campoId);
+  const lectura = x => `${escapar(formatoNivelTanque(x.lecturaAnterior))} → ${escapar(formatoNivelTanque(x.lecturaActual))}`;
 
   const filas = esMensual
-    ? grupos.slice().reverse().map(g => `<tr><td><strong>${escapar(etiquetaGrupoConsumo(g.clave, 'mensual'))}</strong></td><td>${formatoNumeroDashboard(g.valor)} ${unidad}</td><td>${formatoNumeroDashboard(g.valor / g.cantidad)} ${unidad}</td><td>${g.cantidad}</td></tr>`).join('')
-    : serie.slice().reverse().map(x => `<tr><td>${escapar(formatearFechaCompleta(x.fecha))}</td><td>${escapar(x.registro.inspector || 'Técnico')}</td><td><strong>${formatoNumeroDashboard(x.valor)} ${unidad}</strong></td><td>${botonInforme(x.registro.id, 'secondary')}</td></tr>`).join('');
+    ? grupos.slice().reverse().map(g => `<tr><td><strong>${escapar(etiquetaGrupoConsumo(g.clave, 'mensual'))}</strong></td><td>${escapar(formato(g.valor))} ${unidad}</td><td>${escapar(formato(g.valor / g.cantidad))} ${unidad}</td><td>${g.cantidad}</td></tr>`).join('')
+    : serie.slice().reverse().map(x => `<tr><td>${escapar(formatearFechaCompleta(x.fecha))}</td><td>${escapar(x.registro.inspector || 'Técnico')}</td>${diesel ? `<td>${lectura(x)}</td>` : ''}<td><strong>${escapar(formato(x.valor))} ${unidad}</strong></td><td>${botonInforme(x.registro.id, 'secondary')}</td></tr>`).join('');
 
   const pestana = (valor, texto) => `<button type="button" class="detail-tab ${modo === valor ? 'active' : ''}" data-action="open-usage-detail" data-field="${campoId}" data-title="${tituloCodificado}" data-unit="${escapar(unidad)}" data-color="${color}" data-mode="${valor}">${texto}</button>`;
   const encabezados = esMensual
     ? '<th>Mes</th><th>Total</th><th>Promedio</th><th>Días registrados</th>'
-    : '<th>Fecha</th><th>Técnico</th><th>Consumo</th><th>Origen</th>';
+    : `<th>Fecha</th><th>Técnico</th>${diesel ? '<th>Nivel del tanque</th>' : ''}<th>Consumo</th><th>Origen</th>`;
 
   abrirModalDashboard(titulo, `
     ${barraHerramientas(escapar(titulo), textoPeriodo(), `<div class="detail-tabs">${pestana('diario', 'Diario')}${pestana('mensual', 'Mensual')}</div>`)}
     <div class="detail-summary-grid">
-      ${tarjetaResumen('Total del período', conUnidad(serie.length ? formatoNumeroDashboard(r.total) : '—'))}
-      ${tarjetaResumen('Promedio por registro', conUnidad(serie.length ? formatoNumeroDashboard(r.promedio) : '—'))}
-      ${tarjetaResumen('Máximo diario registrado', conUnidad(maximo === null ? '—' : formatoNumeroDashboard(maximo)))}
-      ${tarjetaResumen('Mínimo diario registrado', conUnidad(minimo === null ? '—' : formatoNumeroDashboard(minimo)))}
+      ${tarjetaResumen('Total del período', conUnidad(serie.length ? escapar(formato(r.total)) : '—'))}
+      ${tarjetaResumen('Promedio por registro', conUnidad(serie.length ? escapar(formato(r.promedio)) : '—'))}
+      ${tarjetaResumen('Máximo diario registrado', conUnidad(maximo === null ? '—' : escapar(formato(maximo))))}
+      ${tarjetaResumen('Mínimo diario registrado', conUnidad(minimo === null ? '—' : escapar(formato(minimo))))}
     </div>
     <section class="detail-chart-card">
       <div class="detail-chart-head">
         <div><h4>${esMensual ? 'Comportamiento mensual' : 'Comportamiento diario'}</h4><span>${esMensual ? 'Totales agrupados por mes' : 'Valores agrupados por día'}</span></div>
         <span>Línea roja = promedio del gráfico</span>
       </div>
-      ${renderGraficaDetalleConsumo(grupos, unidad, color, modo)}
+      ${renderGraficaDetalleConsumo(grupos, unidad, color, modo, formato)}
     </section>
     ${tablaDashboard(esMensual ? 'Resumen mensual' : 'Registros diarios', `${serie.length} registro(s)`,
       filas ? tabla(encabezados, filas) : '<div class="dashboard-empty">No existen datos registrados.</div>')}`);

@@ -1,6 +1,7 @@
 /* Middlewares de sesión y permisos. */
 import { leerToken, hashToken } from '../security/sessions.js';
 import { noAutenticado, prohibido } from '../utils/errors.js';
+import { puedeInspeccionar, puedeSupervisar } from '../../public/js/core/roles.js';
 
 /* Si la cookie corresponde a una sesión vigente de un usuario activo, deja req.usuario
    (y res.locals.usuario para las vistas EJS) */
@@ -19,16 +20,15 @@ export function requiereSesion(req, res, next) {
   next();
 }
 
-/* API: responde 403 si el rol no corresponde */
-export const requiereRol = rol => (req, res, next) => {
+/* API: responde 403 si el rol de la sesión no tiene el permiso (ver public/js/core/roles.js) */
+const requierePermiso = (tienePermiso, mensaje) => (req, res, next) => {
   if (!req.usuario) return next(noAutenticado());
-  if (req.usuario.rol !== rol) {
-    return next(prohibido(rol === 'ingeniero'
-      ? 'Esta acción es exclusiva del Ingeniero Supervisor.'
-      : 'Esta acción es exclusiva del Técnico Inspector.'));
-  }
+  if (!tienePermiso(req.usuario.rol)) return next(prohibido(mensaje));
   next();
 };
+
+export const requiereSupervisar = requierePermiso(puedeSupervisar, 'Esta acción es exclusiva del Ingeniero Supervisor o del Supervisor Técnico.');
+export const requiereInspeccionar = requierePermiso(puedeInspeccionar, 'Esta acción es exclusiva del Técnico Inspector o del Supervisor Técnico.');
 
 /* Páginas: sin sesión redirige al inicio de sesión */
 export function requiereSesionPagina(req, res, next) {

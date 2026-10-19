@@ -17,6 +17,9 @@
       <span id="txtNombreUsuario" class="user-name"><%= usuario.nombre %></span>
       <span id="badgeRolUsuario" class="role-badge <%= perfil.rolClase %>"><%= perfil.rolTexto %></span>
     </div>
+    <button id="btnCambiarContrasena" type="button" class="topbar-logout topbar-password" data-action="change-password" aria-label="Cambiar contraseña" title="Cambiar contraseña">
+      <%- icono('candado') %>
+    </button>
     <button id="btnCerrarSesion" type="button" class="topbar-logout" data-action="logout" aria-label="Cerrar sesión" title="Cerrar sesión">
       <%- icono('salir') %>
     </button>

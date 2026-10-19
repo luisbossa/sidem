@@ -23,7 +23,7 @@
     </div>
 
     <%- include('../partials/app/modals/report-detail') %>
-    <% if (usuario.rol === 'ingeniero') { %>
+    <% if (puedeSupervisar(usuario.rol)) { %>
       <%- include('../partials/app/modals/dashboard-detail') %>
       <%- include('../partials/app/modals/user-form') %>
       <%- include('../partials/app/modals/schedule-form') %>

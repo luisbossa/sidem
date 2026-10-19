@@ -570,6 +570,54 @@
   white-space: nowrap;
 }
 
+/* Gráfica por bancos (oxígeno y aire instrumental): dos barras por día con 2px de separación */
+.detail-bar-pair {
+  width: min(44px, 85%);
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+}
+
+.detail-bar-paired {
+  width: 50%;
+  border-radius: 4px 4px 0 0;
+  cursor: default;
+}
+
+/* Las barras dobles muestran su valor al pasar el cursor (title), no encima: no caben dos rótulos */
+.detail-bar-paired::before {
+  content: none;
+}
+
+.detail-bar-empty {
+  min-height: 0;
+  background: transparent;
+}
+
+.detail-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.detail-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--bar-color);
+}
+
 .detail-average-line {
   position: absolute;
   left: 0;

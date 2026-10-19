@@ -196,3 +196,8 @@
     padding: 20px;
   }
 }
+
+.unfinished-route small.unfinished-route-where {
+  margin-top: 4px;
+  color: var(--amber);
+}

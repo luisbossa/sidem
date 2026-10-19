@@ -75,6 +75,8 @@ export class Inspecciones {
       const insertarSistema = this.db.prepare('INSERT INTO inspeccion_sistemas (inspeccion_id, sistema_id, orden, justificacion) VALUES (?, ?, ?, ?)');
       sistemas.forEach(s => insertarSistema.run(id, s.sistemaId, s.orden, s.justificacion));
 
+      // Las fotos que se tomaron durante el recorrido pasan al informe
+      this.db.prepare('UPDATE fotos SET inspeccion_id = ?, recorrido_id = NULL WHERE recorrido_id = ?').run(id, recorridoId);
       this.db.prepare('DELETE FROM recorridos_abiertos WHERE id = ?').run(recorridoId);
     });
     return this.buscar(id);
@@ -105,7 +107,7 @@ export class Inspecciones {
     return this.buscar(id);
   }
 
-  /* Completa cada informe con sus valores, sistemas y mensajes (3 consultas para toda la lista) */
+  /* Completa cada informe con sus valores, sistemas, fotos y mensajes (4 consultas para toda la lista) */
   #completar(filas) {
     if (!filas.length) return [];
     const porId = new Map(filas.map(f => [f.id, {
@@ -114,7 +116,8 @@ export class Inspecciones {
       datos: {},
       justificacionesSistemas: {},
       ordenRecorrido: [],
-      historialConversacion: []
+      historialConversacion: [],
+      fotos: {}
     }]));
     const ids = [...porId.keys()];
     const marcas = ids.map(() => '?').join(',');
@@ -123,6 +126,14 @@ export class Inspecciones {
       .all(...ids)
       .forEach(v => {
         porId.get(v.inspeccion_id).datos[v.campo_id] = v.verificacion ? { estado: v.verificacion, detalle: v.detalle } : v.valor;
+      });
+
+    // Fotos de cada pregunta: { campoId: [id, ...] }
+    this.db.prepare(`SELECT inspeccion_id, id, campo_id FROM fotos WHERE inspeccion_id IN (${marcas}) ORDER BY creado_en`)
+      .all(...ids)
+      .forEach(f => {
+        const fotos = porId.get(f.inspeccion_id).fotos;
+        (fotos[f.campo_id] ||= []).push(f.id);
       });
 
     this.db.prepare(`SELECT inspeccion_id, sistema_id, orden, justificacion FROM inspeccion_sistemas WHERE inspeccion_id IN (${marcas}) ORDER BY orden`)

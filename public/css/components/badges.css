@@ -20,6 +20,12 @@
   border: 1px solid #fcd34d;
 }
 
+.role-badge-supervisor {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #c4b5fd;
+}
+
 .tag {
   display: inline-flex;
   padding: 4px 10px;

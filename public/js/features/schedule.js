@@ -1,12 +1,14 @@
-/* Rol semanal: consulta, programación, edición y eliminación de semanas. */
+/* Rol semanal: consulta, programación, edición y eliminación de semanas (de lunes a viernes). */
 import { $, escapar } from '../core/dom.js';
 import { estado } from '../core/state.js';
-import { formatearFechaCorta } from '../core/format.js';
+import { formatearFechaCorta, formatearDiaSemana, fechaLocalISO, lunesDeLaSemana, sumarDias, DIAS_SEMANA_ROL } from '../core/format.js';
+import { puedeInspeccionar, puedeSupervisar } from '../core/roles.js';
 import { leerCronograma, guardarSemana, eliminarSemana, leerUsuarios } from '../data/storage.js';
 import { mostrarAlertaVisual, mostrarConfirmacionVisual } from '../ui/dialogs.js';
 import { icono } from '../ui/icons.js';
 
-const esIngeniero = () => Boolean(estado.usuarioSesion && estado.usuarioSesion.rol === 'ingeniero');
+// Modifica el rol quien supervisa; se asigna a cualquiera que haga recorridos
+const esIngeniero = () => Boolean(estado.usuarioSesion && puedeSupervisar(estado.usuarioSesion.rol));
 
 function plantillaSemana(sem, hoyStr, editable) {
   const esVigente = hoyStr >= sem.inicio && hoyStr <= sem.fin;
@@ -23,8 +25,8 @@ function plantillaSemana(sem, hoyStr, editable) {
         <span>${tipoTexto}</span>
       </div>
       <div class="schedule-dates">
-        <strong>${icono('calendario')} ${formatearFechaCorta(sem.inicio)}</strong>
-        <small>hasta ${formatearFechaCorta(sem.fin)}</small>
+        <strong>${icono('calendario')} ${formatearDiaSemana(sem.inicio)}</strong>
+        <small>hasta el ${formatearDiaSemana(sem.fin)}</small>
       </div>
       <div>
         <div class="schedule-technician">
@@ -46,7 +48,7 @@ export function renderCronograma() {
   const cronograma = leerCronograma();
   const div = $('cronogramaContenido');
   const editable = esIngeniero();
-  const hoyStr = new Date().toISOString().slice(0, 10);
+  const hoyStr = fechaLocalISO(new Date());
 
   $('btnAgregarSemanaCronograma').classList.toggle('hidden', !editable);
 
@@ -83,20 +85,22 @@ export function abrirModalAsignarSemana(id = null) {
   if (!esIngeniero()) return;
   $('formCronograma').reset();
   $('cronogramaId').value = '';
+  $('ayudaCronogramaInicio').textContent = 'Elija el lunes de la semana; el cierre se calcula solo (viernes).';
 
-  const tecnicosActivos = leerUsuarios().filter(u => u.rol === 'inspector' && u.estado === 'Activo');
+  const tecnicosActivos = leerUsuarios().filter(u => puedeInspeccionar(u.rol) && u.estado === 'Activo');
   if (!tecnicosActivos.length) {
     mostrarAlertaVisual('Sin técnicos disponibles', 'No hay técnicos inspectores activos para asignar al rol.', 'advertencia');
     return;
   }
-  $('cronogramaTecnico').innerHTML = tecnicosActivos.map(t => `<option value="${escapar(t.id)}">${escapar(t.nombre)} (${escapar(t.turno)})</option>`).join('');
+  $('cronogramaTecnico').innerHTML = tecnicosActivos.map(t => `<option value="${escapar(t.id)}">${escapar(t.nombre)}${t.turno ? ` (${escapar(t.turno)})` : ''}</option>`).join('');
 
   const item = id ? leerCronograma().find(x => x.id === id) : null;
   if (item) {
     $('modalCronogramaTitulo').textContent = 'Editar Asignación de Semana';
     $('cronogramaId').value = item.id;
+    // Una semana antigua (de lunes a domingo) se guarda de lunes a viernes al editarla
     $('cronogramaFechaInicio').value = item.inicio;
-    $('cronogramaFechaFin').value = item.fin;
+    actualizarFinSemanaAutomatica();
     $('cronogramaTecnico').value = item.tecnicoId;
     $('cronogramaNotas').value = item.notas || '';
   } else if (!id) {
@@ -106,12 +110,20 @@ export function abrirModalAsignarSemana(id = null) {
   $('modalCronograma').classList.remove('hidden');
 }
 
+/* La semana empieza el lunes y termina el viernes: si se elige otro día se ajusta al lunes de esa semana
+   (sábado o domingo pasan al lunes siguiente) */
 export function actualizarFinSemanaAutomatica() {
-  const inicioVal = $('cronogramaFechaInicio').value;
-  if (!inicioVal) return;
-  const d = new Date(inicioVal + 'T00:00:00');
-  d.setDate(d.getDate() + 6);
-  $('cronogramaFechaFin').value = d.toISOString().slice(0, 10);
+  const elegido = $('cronogramaFechaInicio').value;
+  if (!elegido) {
+    $('cronogramaFechaFin').value = '';
+    return;
+  }
+  const lunes = lunesDeLaSemana(elegido);
+  $('cronogramaFechaInicio').value = lunes;
+  $('cronogramaFechaFin').value = sumarDias(lunes, DIAS_SEMANA_ROL - 1);
+  $('ayudaCronogramaInicio').textContent = lunes === elegido
+    ? `Semana del ${formatearDiaSemana(lunes)} al ${formatearDiaSemana($('cronogramaFechaFin').value)}.`
+    : `Se ajustó al lunes de esa semana: ${formatearDiaSemana(lunes)}.`;
 }
 
 export function cerrarModalCronograma() {

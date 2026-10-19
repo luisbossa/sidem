@@ -2,33 +2,40 @@
    el servidor nunca las devuelve. */
 import { $, escapar } from '../core/dom.js';
 import { icono } from '../ui/icons.js';
-import { leerUsuarios, leerRegistros, guardarUsuario, sincronizar, leerAjustes, guardarAjustes, leerRecorridosAbiertos } from '../data/storage.js';
+import { estado } from '../core/state.js';
+import { PERFILES, puedeInspeccionar } from '../core/roles.js';
+import {
+  leerUsuarios, leerRegistros, guardarUsuario, eliminarUsuario, sincronizar, leerAjustes, guardarAjustes, leerRecorridosAbiertos
+} from '../data/storage.js';
 import { formatearFechaCorta, formatearHoraExacta, etiquetaTipoRecorrido } from '../core/format.js';
-import { mostrarAlertaVisual } from '../ui/dialogs.js';
+import { mostrarAlertaVisual, mostrarConfirmacionVisual } from '../ui/dialogs.js';
+import { textoDondeQuedo } from './inspection.js';
 
 let guardando = false;
 
 function plantillaFila(u, inspecciones) {
-  const esIngeniero = u.rol === 'ingeniero';
+  const haceRecorridos = puedeInspeccionar(u.rol);
+  const perfil = PERFILES[u.rol] || PERFILES.inspector;
   const propias = inspecciones.filter(r => r.inspectorId === u.id);
   const pendientes = propias.filter(r => r.estadoRevision === 'Con observaciones').length;
 
   return `
     <tr>
       <td><strong>${escapar(u.nombre)}</strong></td>
-      <td><span class="role-badge ${esIngeniero ? 'role-badge-engineer' : 'role-badge-inspector'}">${esIngeniero ? 'Ingeniero' : 'Técnico'}</span></td>
+      <td><span class="role-badge ${perfil.rolClase}">${perfil.rolCorto}</span></td>
       <td><code>${escapar(u.usuario)}</code></td>
-      <td>${escapar(u.turno)}</td>
+      <td>${escapar(u.turno || '—')}</td>
       <td><span class="tag ${u.estado === 'Activo' ? 'tag-green' : 'tag-red'}">${escapar(u.estado)}</span></td>
       <td>
-        ${esIngeniero ? '<em>Supervisor</em>' : `
+        ${!haceRecorridos ? '<em>Supervisor</em>' : `
           <span>${propias.length} realizada(s)</span>
           ${pendientes > 0 ? `<br><small class="user-pending-note">${pendientes} con observaciones</small>` : ''}`}
       </td>
       <td>
         <div class="table-actions">
           <button type="button" class="btn btn-secondary btn-xs" data-action="open-user-modal" data-id="${escapar(u.id)}">${icono('editar')} Editar</button>
-          ${esIngeniero ? '' : `<button type="button" class="btn btn-blue btn-xs" data-action="filter-history-by-technician" data-name="${escapar(u.nombre)}">${icono('grafico')} Ver Historial</button>`}
+          ${!haceRecorridos ? '' : `<button type="button" class="btn btn-blue btn-xs" data-action="filter-history-by-technician" data-name="${escapar(u.nombre)}">${icono('grafico')} Ver Historial</button>`}
+          ${u.id === estado.usuarioSesion?.id ? '' : `<button type="button" class="btn btn-red btn-xs" data-action="delete-user" data-id="${escapar(u.id)}">${icono('eliminar')} Eliminar</button>`}
         </div>
       </td>
     </tr>`;
@@ -66,13 +73,14 @@ function renderRecorridosAbiertos() {
   $('recorridosAbiertosContenido').innerHTML = abiertos.length ? `
     <div class="table-scroll">
       <table class="data-table">
-        <thead><tr><th>Recorrido</th><th>Iniciado por</th><th>A cargo de</th><th>Sistemas iniciados</th><th>Última actividad</th></tr></thead>
+        <thead><tr><th>Recorrido</th><th>Iniciado por</th><th>A cargo de</th><th>Sistemas iniciados</th><th>Quedó en</th><th>Última actividad</th></tr></thead>
         <tbody>${abiertos.map(r => `
           <tr>
             <td>${etiquetaTipoRecorrido(r.tipoRecorrido)} · ${escapar(formatearFechaCorta(r.iniciadoEnISO))}</td>
             <td>${escapar(r.iniciadoPor)}<br><small>${escapar(formatearHoraExacta(r.iniciadoEnISO))}</small></td>
             <td>${escapar(r.responsable)}</td>
             <td>${r.sistemasIniciados}</td>
+            <td>${r.quedoEn ? escapar(textoDondeQuedo(r.quedoEn)) : '—'}</td>
             <td>${escapar(formatearHoraExacta(r.actualizadoEnISO))}</td>
           </tr>`).join('')}</tbody>
       </table>
@@ -96,10 +104,6 @@ export async function cambiarPermisoTomaRecorridos(casilla) {
     : 'Solo el técnico que inicia un recorrido puede terminarlo.', 'exito');
 }
 
-export function actualizarCamposPorRol() {
-  $('contenedorTurnoTecnico').classList.toggle('hidden', $('tecnicoRol').value === 'ingeniero');
-}
-
 export function abrirModalTecnico(id = null) {
   $('formTecnico').reset();
   $('tecnicoId').value = '';
@@ -116,7 +120,6 @@ export function abrirModalTecnico(id = null) {
     $('tecnicoPassword').placeholder = 'Sin cambios';
     $('ayudaPassword').textContent = 'Deje este campo en blanco si no desea modificar la contraseña actual.';
     $('tecnicoCedula').value = u.cedula || '';
-    if (u.rol === 'inspector') $('tecnicoTurno').value = u.turno;
     $('tecnicoEstado').value = u.estado;
   } else {
     $('modalTecnicoTitulo').textContent = 'Registrar Nuevo Usuario';
@@ -125,7 +128,6 @@ export function abrirModalTecnico(id = null) {
     $('ayudaPassword').textContent = 'Defina la contraseña de acceso para este nuevo usuario.';
   }
 
-  actualizarCamposPorRol();
   $('modalTecnico').classList.remove('hidden');
 }
 
@@ -144,7 +146,6 @@ export async function guardarTecnico(e) {
     usuario: $('tecnicoUsuario').value.trim().toLowerCase(),
     password: $('tecnicoPassword').value.trim(),
     cedula: $('tecnicoCedula').value.trim(),
-    turno: $('tecnicoTurno').value,
     estado: $('tecnicoEstado').value
   };
 
@@ -171,5 +172,31 @@ export async function guardarTecnico(e) {
 
   cerrarModalTecnico();
   renderListaTecnicos();
-  await mostrarAlertaVisual('Usuario Guardado', `La cuenta de ${datos.nombre} (${datos.rol.toUpperCase()}) fue guardada con éxito en el sistema.`, 'exito');
+  await mostrarAlertaVisual('Usuario Guardado', `La cuenta de ${datos.nombre} (${(PERFILES[datos.rol] || PERFILES.inspector).rolTexto}) fue guardada con éxito en el sistema.`, 'exito');
+}
+
+/* Elimina un usuario: deja de aparecer y de poder entrar, pero sus informes conservan su nombre */
+export async function eliminarUsuarioConfirmado(id) {
+  const u = leerUsuarios().find(x => x.id === id);
+  if (!u || guardando) return;
+  const confirmar = await mostrarConfirmacionVisual(
+    `¿Eliminar a ${u.nombre}?`,
+    'Ya no aparecerá en la lista ni podrá iniciar sesión, y su nombre de usuario quedará libre. Sus informes, cancelaciones y mensajes anteriores se conservan con su nombre. Esta acción no se puede deshacer desde la aplicación.',
+    'Sí, eliminar',
+    'advertencia'
+  );
+  if (!confirmar) return;
+
+  guardando = true;
+  try {
+    await eliminarUsuario(id);
+    await sincronizar();
+  } catch (error) {
+    await mostrarAlertaVisual(error.titulo || 'No se pudo eliminar el usuario', error.message, 'advertencia');
+    return;
+  } finally {
+    guardando = false;
+  }
+  renderListaTecnicos();
+  await mostrarAlertaVisual('Usuario eliminado', `${u.nombre} fue eliminado del sistema. Su historial se conserva.`, 'exito');
 }

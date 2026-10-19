@@ -3,6 +3,7 @@ import { $ } from '../core/dom.js';
 import { estado } from '../core/state.js';
 import { mostrarAlertaVisual } from './dialogs.js';
 import { sincronizar } from '../data/storage.js';
+import { puedeInspeccionar } from '../core/roles.js';
 import { renderDashboardIngenieria } from '../features/dashboard/render.js';
 import { renderHistorial } from '../features/history.js';
 import { renderDevolucionesInspector } from '../features/technician-reports.js';
@@ -37,7 +38,7 @@ const TITULO_POR_VISTA = {
 
 export function mostrarVista(v) {
   const { inspeccionActiva, usuarioSesion } = estado;
-  if (inspeccionActiva && usuarioSesion && usuarioSesion.rol === 'inspector' && v !== 'inspeccion') {
+  if (inspeccionActiva && usuarioSesion && puedeInspeccionar(usuarioSesion.rol) && v !== 'inspeccion') {
     mostrarAlertaVisual('Navegación bloqueada', 'Debe finalizar el recorrido o cancelarlo mediante el botón “Cancelar inspección” y justificar el motivo.', 'advertencia');
     return;
   }

@@ -11,10 +11,10 @@ const USUARIOS_INICIALES = [
 ];
 
 const ROL_SEMANAL_INICIAL = [
-  { id: 'sem-1', inicio: '2026-09-07', fin: '2026-09-13', tecnico: 'usr-2', notas: 'Semana de inspección general y verificación de banco de oxígeno.' },
-  { id: 'sem-2', inicio: '2026-09-14', fin: '2026-09-20', tecnico: 'usr-3', notas: 'Recorrido preventivo con enfoque en pruebas de transferencia ATS y generador.' },
-  { id: 'sem-3', inicio: '2026-09-21', fin: '2026-09-27', tecnico: 'usr-4', notas: 'Supervisión de presiones en bombas de agua helada y climatización.' },
-  { id: 'sem-4', inicio: '2026-09-28', fin: '2026-10-04', tecnico: 'usr-2', notas: 'Revisión mensual de pararrayos y continuidad de bajantes a tierra.' }
+  { id: 'sem-1', inicio: '2026-09-07', fin: '2026-09-11', tecnico: 'usr-2', notas: 'Semana de inspección general y verificación de banco de oxígeno.' },
+  { id: 'sem-2', inicio: '2026-09-14', fin: '2026-09-18', tecnico: 'usr-3', notas: 'Recorrido preventivo con enfoque en pruebas de transferencia ATS y generador.' },
+  { id: 'sem-3', inicio: '2026-09-21', fin: '2026-09-25', tecnico: 'usr-4', notas: 'Supervisión de presiones en bombas de agua helada y climatización.' },
+  { id: 'sem-4', inicio: '2026-09-28', fin: '2026-10-02', tecnico: 'usr-2', notas: 'Revisión mensual de pararrayos y continuidad de bajantes a tierra.' }
 ];
 
 export const CONTRASENA_INICIAL = '123';

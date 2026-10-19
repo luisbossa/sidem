@@ -3,6 +3,7 @@
    - Escrituras: asíncronas; llaman a la API y actualizan la caché con la respuesta del servidor.
    Ningún otro módulo usa fetch: este archivo es el único punto de acceso a los datos. */
 import { URL_LOGIN } from '../core/paths.js';
+import { fechaLocalISO } from '../core/format.js';
 
 const cache = {
   usuarios: [],
@@ -76,6 +77,11 @@ export async function iniciarSesionApi(usuario, password) {
   return datos;
 }
 
+/* Cambia la contraseña propia. Un error aquí (p. ej. contraseña actual incorrecta) no redirige al login. */
+export async function cambiarContrasenaApi(actual, nueva) {
+  await api('PUT', '/auth/contrasena', { actual, nueva }, { redirigirSiNoHaySesion: false });
+}
+
 export async function cerrarSesionApi() {
   await api('POST', '/auth/logout', undefined, { redirigirSiNoHaySesion: false });
 }
@@ -106,11 +112,17 @@ export async function guardarUsuario(datos) {
   return guardado;
 }
 
+export async function eliminarUsuario(id) {
+  await api('DELETE', '/usuarios/' + encodeURIComponent(id));
+  cache.usuarios = cache.usuarios.filter(u => u.id !== id);
+}
+
 /* Rol semanal */
 export const leerCronograma = () => cache.cronograma;
 
 export function obtenerSemanaVigente() {
-  const hoyStr = new Date().toISOString().slice(0, 10);
+  // Día local: con toISOString(), después de las 6 p. m. en Costa Rica ya sería el día siguiente
+  const hoyStr = fechaLocalISO(new Date());
   return cache.cronograma.find(c => hoyStr >= c.inicio && hoyStr <= c.fin) || null;
 }
 
@@ -149,8 +161,7 @@ export async function responderInspeccion(id, texto) {
   return actualizado;
 }
 
-/* Recorridos cancelados */
-export const leerCancelaciones = () => cache.cancelaciones;
+/* Recorridos cancelados (se registran, pero ninguna pantalla los lista) */
 
 export async function crearCancelacion(datos) {
   const creada = await api('POST', '/cancelaciones', datos);
@@ -230,5 +241,17 @@ export function eliminarProgreso() {
   return enviarProgreso();
 }
 
+/* Antes de enviar el borrador al cerrar la página, otros módulos pueden actualizarlo
+   (por ejemplo, con lo que el técnico escribió en el formulario abierto) */
+const antesDeCerrar = [];
+export function alCerrarPagina(fn) {
+  antesDeCerrar.push(fn);
+}
+
 /* Envía el borrador pendiente si se cierra o recarga la página */
-addEventListener('pagehide', () => enviarProgreso(true));
+addEventListener('pagehide', () => {
+  antesDeCerrar.forEach(fn => {
+    try { fn(); } catch (e) { console.warn('[SIDEM] Al cerrar la página:', e.message); }
+  });
+  enviarProgreso(true);
+});

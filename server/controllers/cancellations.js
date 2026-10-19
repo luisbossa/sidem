@@ -3,11 +3,12 @@ import { sistemaValido } from '../services/inspection-report.js';
 import { texto, opcion, instante, arregloDeTextos } from '../utils/validation.js';
 import { solicitudInvalida } from '../utils/errors.js';
 import { recorridoACargo } from './route-drafts.js';
+import { puedeSupervisar } from '../../public/js/core/roles.js';
 
 export function crearControladorCancelaciones({ cancelaciones, recorridos }) {
   return {
     listar(req, res) {
-      res.json(cancelaciones.listar(req.usuario.rol === 'ingeniero' ? null : req.usuario.id));
+      res.json(cancelaciones.listar(puedeSupervisar(req.usuario.rol) ? null : req.usuario.id));
     },
 
     crear(req, res) {

@@ -2,17 +2,20 @@
 -- Fechas y horas: texto ISO 8601 en UTC (AAAA-MM-DDTHH:MM:SS.sssZ); días: AAAA-MM-DD.
 -- Se aplica al arrancar el servidor; todas las sentencias son idempotentes.
 
--- Personal con acceso al sistema. Nunca se borran: se marcan como inactivos.
+-- Personal con acceso al sistema. Las filas nunca se borran (sus informes las referencian):
+-- se marcan como inactivas o como eliminadas (eliminado_en).
 CREATE TABLE IF NOT EXISTS usuarios (
   id            TEXT PRIMARY KEY,
   nombre        TEXT NOT NULL,
-  rol           TEXT NOT NULL CHECK (rol IN ('inspector', 'ingeniero')),
+  rol           TEXT NOT NULL CHECK (rol IN ('inspector', 'ingeniero', 'supervisor')),
   usuario       TEXT NOT NULL UNIQUE COLLATE NOCASE,
   password_hash TEXT NOT NULL,
   cedula        TEXT NOT NULL DEFAULT '',
   turno         TEXT NOT NULL DEFAULT '',
   estado        TEXT NOT NULL DEFAULT 'Activo' CHECK (estado IN ('Activo', 'Inactivo / Vacaciones')),
-  creado_en     TEXT NOT NULL
+  creado_en     TEXT NOT NULL,
+  -- Eliminado desde Gestión de usuarios: no aparece ni puede entrar, pero su historial se conserva
+  eliminado_en  TEXT
 );
 
 -- Sesiones abiertas. Se guarda el hash SHA-256 del token, nunca el token.
@@ -127,3 +130,20 @@ CREATE TABLE IF NOT EXISTS ajustes (
   clave TEXT PRIMARY KEY,
   valor TEXT NOT NULL
 );
+
+-- Fotos opcionales de una pregunta del recorrido. El archivo está en data/fotos/<id>.<ext>.
+-- Mientras el recorrido está abierto se liga a recorrido_id; al enviar el informe, a inspeccion_id.
+CREATE TABLE IF NOT EXISTS fotos (
+  id            TEXT PRIMARY KEY,
+  recorrido_id  TEXT,
+  inspeccion_id TEXT REFERENCES inspecciones (id) ON DELETE CASCADE,
+  campo_id      TEXT NOT NULL,
+  sistema_id    TEXT NOT NULL,
+  tipo          TEXT NOT NULL CHECK (tipo IN ('image/jpeg', 'image/png')),
+  tamano        INTEGER NOT NULL,
+  subida_por_id TEXT NOT NULL REFERENCES usuarios (id),
+  creado_en     TEXT NOT NULL,
+  CHECK ((recorrido_id IS NULL) <> (inspeccion_id IS NULL))
+);
+CREATE INDEX IF NOT EXISTS idx_fotos_recorrido ON fotos (recorrido_id);
+CREATE INDEX IF NOT EXISTS idx_fotos_inspeccion ON fotos (inspeccion_id);

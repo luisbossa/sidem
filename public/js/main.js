@@ -4,6 +4,7 @@ import { registrarAcciones, iniciarDelegacionEventos } from './ui/actions.js';
 import { mostrarVista } from './ui/navigation.js';
 import { pintarIconos } from './ui/icons.js';
 import { cerrarSesion, restaurarProgreso } from './features/session.js';
+import { cambiarContrasena } from './features/password.js';
 import {
   iniciarInspeccion, continuarRecorridoAjeno, cancelarInspeccion, finalizarInspeccion, abrirSistema, guardarJustificacionSistema,
   volverAlListadoSistemas, guardarSistemaCompletado, cambioVerificacion
@@ -13,7 +14,7 @@ import { cambiarFiltroHistorial, filtrarHistorialPorTecnico, quitarFiltroTecnico
 import {
   abrirModalAsignarSemana, cerrarModalCronograma, guardarSemanaCronograma, eliminarSemanaCronograma, actualizarFinSemanaAutomatica
 } from './features/schedule.js';
-import { abrirModalTecnico, cerrarModalTecnico, guardarTecnico, actualizarCamposPorRol, cambiarPermisoTomaRecorridos } from './features/users.js';
+import { abrirModalTecnico, cerrarModalTecnico, guardarTecnico, eliminarUsuarioConfirmado, cambiarPermisoTomaRecorridos } from './features/users.js';
 import { verDetalle, cerrarDetalle, guardarRevisionIngeniero, guardarRespuestaYReenviar, generarPdfInforme } from './features/report-detail.js';
 import { cambiarPeriodoDashboard } from './features/dashboard/render.js';
 import {
@@ -26,6 +27,7 @@ registrarAcciones({
     // Navegación y sesión
     'show-view': el => mostrarVista(el.dataset.view),
     'logout': () => cerrarSesion(),
+    'change-password': () => cambiarContrasena(),
 
     // Recorrido
     'start-inspection': el => iniciarInspeccion(el.dataset.route),
@@ -56,6 +58,7 @@ registrarAcciones({
     // Usuarios
     'open-user-modal': el => abrirModalTecnico(el.dataset.id || null),
     'close-user-modal': () => cerrarModalTecnico(),
+    'delete-user': el => eliminarUsuarioConfirmado(el.dataset.id),
 
     // Dashboard
     'set-dashboard-period': el => cambiarPeriodoDashboard(Number(el.dataset.days)),
@@ -75,7 +78,6 @@ registrarAcciones({
     'filter-technician-reports': el => cambiarFiltroInformesTecnico(el.dataset.filter, el.value),
     'filter-history': el => cambiarFiltroHistorial(el.dataset.filter, el.value),
     'filter-duration': el => abrirDetalleDuracion(el.value),
-    'user-role-change': () => actualizarCamposPorRol(),
     'toggle-route-takeover': el => cambiarPermisoTomaRecorridos(el),
     'schedule-start-change': () => actualizarFinSemanaAutomatica()
   },

@@ -67,24 +67,83 @@ function construirSerieReduccion(registros, obtenerLectura, factor = 1) {
   return serie;
 }
 
+/* Diésel: el valor es la fracción de tanque consumida (0.25 = 1/4 de tanque) */
 function extraerSerieReduccionDiesel(registros, campoNivel) {
-  return construirSerieReduccion(registros, r => convertirNivelDiesel(r.datos ? r.datos[campoNivel] : null), 100);
+  return construirSerieReduccion(registros, r => convertirNivelDiesel(r.datos ? r.datos[campoNivel] : null));
 }
 
-function extraerSerieReduccionPresiones(registros, campoIzquierdo, campoDerecho) {
-  return construirSerieReduccion(registros, r => {
-    const izquierda = numeroConsumo(r.datos ? r.datos[campoIzquierdo] : null);
-    const derecha = numeroConsumo(r.datos ? r.datos[campoDerecho] : null);
-    return izquierda === null || derecha === null ? null : izquierda + derecha;
-  });
+const CONSUMOS_DIESEL = new Set(['__dieselGenEstimado', '__dieselIncendiosEstimado']);
+export const esConsumoDiesel = campoId => CONSUMOS_DIESEL.has(campoId);
+
+const mcd = (a, b) => (b ? mcd(b, a % b) : a);
+
+/* Fracción de tanque en la forma en que la leen los técnicos: 1/4, 1/2, 3/4, 1 1/4…
+   Se redondea al octavo más cercano; si no es exacta se antepone "≈". */
+export function formatoFraccionTanque(valor) {
+  const v = Number(valor);
+  if (!Number.isFinite(v)) return '—';
+  if (v === 0) return '0';
+  const octavos = Math.round(Math.abs(v) * 8);
+  if (octavos === 0) return '< 1/8';
+  const enteros = Math.floor(octavos / 8);
+  const resto = octavos % 8;
+  const divisor = mcd(resto, 8);
+  const fraccion = resto ? `${resto / divisor}/${8 / divisor}` : '';
+  const texto = [enteros || '', fraccion].filter(Boolean).join(' ');
+  return Math.abs(octavos / 8 - Math.abs(v)) > 1e-9 ? `≈ ${texto}` : texto;
+}
+
+/* Lectura del nivel del tanque tal como se registró: lleno, 3/4, 1/2, 1/4, vacío */
+export function formatoNivelTanque(nivel) {
+  if (nivel === 1) return 'lleno';
+  if (nivel === 0) return 'vacío';
+  return formatoFraccionTanque(nivel);
+}
+
+/* Valor de un consumo con el formato que corresponde a su indicador */
+export function formatoConsumo(valor, campoId, max = 2) {
+  return esConsumoDiesel(campoId) ? formatoFraccionTanque(valor) : formatoNumeroDashboard(valor, max);
+}
+
+/* Bancos de gases: cada banco se compara con su propia lectura anterior, así la recarga de un banco
+   no oculta el consumo del otro. El consumo total de un informe es la suma de los dos bancos. */
+const BANCOS_GASES = {
+  __oxigenoEstimado: { izquierdo: 'presionBancoIzqO2', derecho: 'presionBancoDerO2' },
+  __aireInstrumentalEstimado: { izquierdo: 'presionBancoIzqInstr', derecho: 'presionBancoDerInstr' }
+};
+export const tieneBancos = campoId => Boolean(BANCOS_GASES[campoId]);
+
+/* { izquierdo, derecho }: serie de reducción de presión de cada banco */
+export function extraerSeriesBancos(registros, campoId) {
+  const bancos = BANCOS_GASES[campoId];
+  if (!bancos) return null;
+  const serieDe = campo => construirSerieReduccion(registros, r => numeroConsumo(r.datos ? r.datos[campo] : null));
+  return { izquierdo: serieDe(bancos.izquierdo), derecho: serieDe(bancos.derecho) };
+}
+
+/* Une las series de los dos bancos por informe: { registro, fecha, valor (suma), izquierdo, derecho } */
+export function unirSeriesBancos({ izquierdo, derecho }) {
+  const porInforme = new Map();
+  const agregar = (lado, x) => {
+    if (!porInforme.has(x.registro.id)) porInforme.set(x.registro.id, { registro: x.registro, fecha: x.fecha, valor: 0, izquierdo: null, derecho: null });
+    const fila = porInforme.get(x.registro.id);
+    fila[lado] = x;
+    fila.valor += x.valor;
+  };
+  izquierdo.forEach(x => agregar('izquierdo', x));
+  derecho.forEach(x => agregar('derecho', x));
+  return [...porInforme.values()].sort((a, b) => a.fecha - b.fecha);
+}
+
+function extraerSerieReduccionPresiones(registros, campoId) {
+  return unirSeriesBancos(extraerSeriesBancos(registros, campoId));
 }
 
 /* Los ids que empiezan con "__" son consumos estimados a partir de lecturas consecutivas */
 export function extraerSerieConsumo(registros, campoId) {
   if (campoId === '__dieselGenEstimado') return extraerSerieReduccionDiesel(registros, 'nivelDieselGen');
   if (campoId === '__dieselIncendiosEstimado') return extraerSerieReduccionDiesel(registros, 'nivelDiesel');
-  if (campoId === '__oxigenoEstimado') return extraerSerieReduccionPresiones(registros, 'presionBancoIzqO2', 'presionBancoDerO2');
-  if (campoId === '__aireInstrumentalEstimado') return extraerSerieReduccionPresiones(registros, 'presionBancoIzqInstr', 'presionBancoDerInstr');
+  if (tieneBancos(campoId)) return extraerSerieReduccionPresiones(registros, campoId);
   return registros
     .map(r => ({ registro: r, fecha: new Date(r.fechaISO || r.horaInicioISO), valor: numeroConsumo(r.datos ? r.datos[campoId] : null) }))
     .filter(x => x.valor !== null && !Number.isNaN(x.fecha.getTime()))

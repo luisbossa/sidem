@@ -12,8 +12,8 @@ export const SISTEMAS = [
         campos: [
           { id: 'nivelDiesel', label: 'Nivel de diésel', tipo: 'text', placeholder: 'Ej. 1/4, 1/2, 3/4 o lleno', ayuda: 'Fracción observada en tanque' },
           { id: 'horasMotor', label: 'Horas de funcionamiento del motor', tipo: 'text', unidad: 'horas' },
-          { id: 'temperaturaMotor', label: 'Temperatura del motor', tipo: 'text', unidad: '°C' },
-          { id: 'temperaturaAgua', label: 'Temperatura del agua del motor', tipo: 'text', unidad: '°C' },
+          { id: 'temperaturaMotor', label: 'Temperatura del motor', tipo: 'text', unidad: '°F' },
+          { id: 'temperaturaAgua', label: 'Temperatura del agua del motor', tipo: 'text', unidad: '°F' },
           { id: 'ultimaFallaMotor', label: 'Historial de fallas: última falla registrada', tipo: 'textarea', placeholder: 'Si no existen fallas, escriba: Sin fallas registradas' }
         ]
       },

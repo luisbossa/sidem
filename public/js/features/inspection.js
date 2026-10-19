@@ -4,10 +4,12 @@
 import { $, escapar } from '../core/dom.js';
 import { estado } from '../core/state.js';
 import { formatearFechaCorta, formatearHoraExacta, fechaLocalISO } from '../core/format.js';
+import { puedeInspeccionar } from '../core/roles.js';
+import { camposObligatorios, campoCompleto } from '../core/avance.js';
 import { SISTEMAS } from '../data/systems.js';
 import {
   crearInspeccion, crearCancelacion, guardarProgreso, eliminarProgreso, sincronizar, iniciarRecorridoApi, tomarRecorrido,
-  leerRecorridosHoy, leerRecorridosAbiertos, leerAjustes, alPerderRecorrido, esRecorridoNoDisponible
+  leerRecorridosHoy, leerRecorridosAbiertos, leerAjustes, alPerderRecorrido, esRecorridoNoDisponible, alCerrarPagina
 } from '../data/storage.js';
 import { mostrarAlertaVisual, solicitarJustificacionCancelacion, solicitarCredenciales } from '../ui/dialogs.js';
 import { mostrarVista } from '../ui/navigation.js';
@@ -41,7 +43,7 @@ function textoEstadoRecorrido(r) {
 }
 
 export function actualizarOpcionesRecorridoDiario() {
-  if (!estado.usuarioSesion || estado.usuarioSesion.rol !== 'inspector') return;
+  if (!estado.usuarioSesion || !puedeInspeccionar(estado.usuarioSesion.rol)) return;
   const opciones = { manana: ['btnRecorridoManana', 'estadoRecorridoManana'], tarde: ['btnRecorridoTarde', 'estadoRecorridoTarde'] };
   let completados = 0;
 
@@ -59,6 +61,12 @@ export function actualizarOpcionesRecorridoDiario() {
     ? 'Los dos recorridos obligatorios de hoy fueron completados.'
     : `Recorridos completados hoy: ${completados} de 2.`;
   renderRecorridosSinTerminar();
+}
+
+/* "3. Bombas de agua · pregunta «Presión de descarga»" */
+export function textoDondeQuedo(q) {
+  if (!q.pregunta) return `${q.sistema} (sistema completo)`;
+  return `${q.sistema} · pregunta «${q.pregunta}»`;
 }
 
 /* Recorridos que otro técnico inició y no terminó */
@@ -83,6 +91,7 @@ function renderRecorridosSinTerminar() {
           <strong>Recorrido de la ${NOMBRE_TIPO[r.tipoRecorrido]}${r.fechaLocal === hoy ? ' de hoy' : ` · ${escapar(formatearFechaCorta(r.iniciadoEnISO))}`}</strong>
           <small>Iniciado por ${escapar(r.iniciadoPor)} el ${escapar(formatearFechaCorta(r.iniciadoEnISO))} a las ${escapar(formatearHoraExacta(r.iniciadoEnISO))}${aCargo}</small>
           <small>${r.sistemasIniciados} de ${SISTEMAS.length} sistemas iniciados · última actividad ${escapar(formatearHoraExacta(r.actualizadoEnISO))}</small>
+          ${r.quedoEn ? `<small class="unfinished-route-where">Quedó en: <strong>${escapar(textoDondeQuedo(r.quedoEn))}</strong></small>` : ''}
         </div>
         <button type="button" class="btn btn-primary btn-sm" data-action="take-route" data-id="${escapar(r.id)}" ${permitido ? '' : 'disabled'}>
           ${icono('flechaDerecha')} Continuar este recorrido
@@ -103,7 +112,26 @@ export function entrarEnRecorrido(borrador) {
   actualizarBloqueoNavegacionTecnico();
   mostrarVista('inspeccion');
   iniciarCronometro();
-  mostrarListadoSistemas();
+  if (borrador.enFormulario && SISTEMAS[estado.pasoActual]) {
+    renderizarPaso(estado.pasoActual);
+    marcarPrimeraPreguntaPendiente();
+  } else {
+    mostrarListadoSistemas();
+  }
+}
+
+/* Primera pregunta sin responder del sistema abierto: se resalta y se enfoca para seguir desde ahí */
+function marcarPrimeraPreguntaPendiente() {
+  const pendiente = camposDelSistema(SISTEMAS[estado.pasoActual]).find(c => !campoEstaCompleto(c));
+  if (!pendiente) return;
+  const campo = $('campo_' + pendiente.id);
+  if (!campo) return;
+  campo.classList.add('resume-here');
+  setTimeout(() => {
+    campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const entrada = campo.querySelector('input:not([type="radio"]), textarea') || campo.querySelector('input');
+    if (entrada) entrada.focus({ preventScroll: true });
+  }, 250);
 }
 
 /* Vuelve a pedir el estado de los recorridos y repinta el inicio */
@@ -117,8 +145,8 @@ async function refrescarRecorridos() {
 }
 
 export async function iniciarInspeccion(tipoRecorrido) {
-  if (!estado.usuarioSesion || estado.usuarioSesion.rol !== 'inspector') {
-    await mostrarAlertaVisual('Acceso Restringido', 'Solo el usuario con rol de Inspector puede iniciar la inspección diaria.', 'advertencia');
+  if (!estado.usuarioSesion || !puedeInspeccionar(estado.usuarioSesion.rol)) {
+    await mostrarAlertaVisual('Acceso Restringido', 'Solo un Técnico Inspector o un Supervisor Técnico puede iniciar la inspección diaria.', 'advertencia');
     return;
   }
   if (!NOMBRE_TIPO[tipoRecorrido] || iniciandoRecorrido) return;
@@ -145,7 +173,7 @@ export async function continuarRecorridoAjeno(id) {
   if (!r) return;
   const borrador = await solicitarCredenciales(
     'Continuar recorrido',
-    `Va a continuar el recorrido de la ${NOMBRE_TIPO[r.tipoRecorrido]} que inició ${r.iniciadoPor}. Escriba su propio usuario y contraseña. Quedará registrado que ${r.iniciadoPor} lo inició y que usted lo completó.`,
+    `Va a continuar el recorrido de la ${NOMBRE_TIPO[r.tipoRecorrido]} que inició ${r.iniciadoPor}.${r.quedoEn ? ` Seguirá en ${textoDondeQuedo(r.quedoEn)}.` : ''} Escriba su propio usuario y contraseña. Quedará registrado que ${r.iniciadoPor} lo inició y que usted lo completó.`,
     (usuario, password) => tomarRecorrido(id, usuario, password),
     'Continuar recorrido'
   );
@@ -177,22 +205,14 @@ function aplicarColores(c) {
 }
 
 /* Estado de cada sistema */
-function camposDelSistema(sistema) {
-  return sistema.paneles.flatMap(p => p.campos).filter(c => c.id !== 'observacionesFinales');
-}
+const camposDelSistema = camposObligatorios;
 
 function valorTieneContenido(valor) {
   if (valor && typeof valor === 'object') return Boolean(valor.estado || valor.detalle);
   return Boolean(String(valor ?? '').trim());
 }
 
-function campoEstaCompleto(campo) {
-  const valor = estado.respuestas[campo.id];
-  if (campo.tipo === 'verificacion') {
-    return Boolean(valor && valor.estado && (valor.estado !== 'No conforme' || String(valor.detalle || '').trim()));
-  }
-  return Boolean(String(valor ?? '').trim());
-}
+const campoEstaCompleto = campo => campoCompleto(campo, estado.respuestas[campo.id]);
 
 function obtenerEstadoSistema(sistema) {
   const campos = camposDelSistema(sistema);
@@ -217,6 +237,7 @@ function hayRecorridoSinResolver() {
 
 /* Listado de sistemas */
 export function mostrarListadoSistemas(mostrarAlerta = false) {
+  estado.enFormulario = false;
   $('vistaListadoSistemas').classList.remove('hidden');
   $('vistaFormularioSistema').classList.add('hidden');
   aplicarColores({ tema: '#1d4ed8', oscuro: '#1e40af', borde: '#1e40af', fondo: '#f8fafc', textoCabecera: '#ffffff' });
@@ -283,8 +304,8 @@ export async function guardarJustificacionSistema(idx) {
 export function abrirSistema(idx) {
   if (!estado.inspeccionActiva) return;
   if (!estado.ordenRecorrido.includes(SISTEMAS[idx].id)) estado.ordenRecorrido.push(SISTEMAS[idx].id);
-  guardarEstadoEnProgreso();
   renderizarPaso(idx);
+  guardarEstadoEnProgreso();
 }
 
 function plantillaCampo(c) {
@@ -337,6 +358,7 @@ function plantillaCampo(c) {
 
 function renderizarPaso(idx) {
   estado.pasoActual = idx;
+  estado.enFormulario = true;
   const s = SISTEMAS[idx];
   aplicarColores(s.colores);
   $('tituloSistema').innerHTML = `${icono(s.icono)} ${idx + 1}. ${escapar(s.nombre)}`;
@@ -520,6 +542,7 @@ function limpiarRecorridoEnPantalla() {
   estado.justificacionesSistemas = {};
   estado.ordenRecorrido = [];
   estado.mostrarJustificacionesPendientes = false;
+  estado.enFormulario = false;
   actualizarBloqueoNavegacionTecnico();
   $('estadoCabecera').textContent = 'Inspector activo';
 }
@@ -544,9 +567,24 @@ function guardarEstadoEnProgreso() {
   guardarProgreso({
     inspeccionActiva: estado.inspeccionActiva,
     pasoActual: estado.pasoActual,
+    enFormulario: estado.enFormulario,
     respuestas: estado.respuestas,
     justificacionesSistemas: estado.justificacionesSistemas,
     ordenRecorrido: estado.ordenRecorrido,
     mostrarJustificacionesPendientes: estado.mostrarJustificacionesPendientes
   });
 }
+
+/* Guardado automático de lo que se escribe en el formulario abierto */
+function guardarRespuestaEscrita(e) {
+  if (!estado.inspeccionActiva || !estado.enFormulario || !e.target.closest('#contenedorPaso')) return;
+  e.target.closest('.form-field')?.classList.remove('resume-here');
+  capturarRespuestasActuales();
+}
+document.addEventListener('input', guardarRespuestaEscrita);
+document.addEventListener('change', guardarRespuestaEscrita);
+
+/* Si se cierra la página con el formulario abierto, se guarda lo último que se escribió */
+alCerrarPagina(() => {
+  if (estado.inspeccionActiva && estado.enFormulario) capturarRespuestasActuales();
+});

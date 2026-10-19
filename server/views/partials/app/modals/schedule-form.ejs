@@ -9,11 +9,12 @@
       <form id="formCronograma" class="form" data-submit="save-schedule-week">
         <input type="hidden" id="cronogramaId" />
         <div class="form-field">
-          <label for="cronogramaFechaInicio">Fecha de Inicio de Semana (Lunes) *</label>
+          <label for="cronogramaFechaInicio">Inicio de la semana (lunes) *</label>
           <input id="cronogramaFechaInicio" type="date" required data-change="schedule-start-change" />
+          <small id="ayudaCronogramaInicio">Elija el lunes de la semana; el cierre se calcula solo (viernes).</small>
         </div>
         <div class="form-field">
-          <label for="cronogramaFechaFin">Fecha de Cierre de Semana (Domingo) *</label>
+          <label for="cronogramaFechaFin">Cierre de la semana (viernes) *</label>
           <input id="cronogramaFechaFin" type="date" required readonly />
         </div>
         <div class="form-field">

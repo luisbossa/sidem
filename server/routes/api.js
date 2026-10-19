@@ -1,6 +1,6 @@
 /* Rutas de la API REST (/api). Cada ruta: middleware de permisos → controlador. */
 import { Router } from 'express';
-import { requiereSesion, requiereRol } from '../middleware/auth.js';
+import { requiereSesion, requiereSupervisar, requiereInspeccionar } from '../middleware/auth.js';
 import { sinCache } from '../middleware/security-headers.js';
 import { noEncontrado } from '../utils/errors.js';
 import { crearControladorAuth } from '../controllers/auth.js';
@@ -22,8 +22,10 @@ export function rutasApi(modelos) {
   const recorridos = crearControladorRecorridos(modelos);
   const ajustesGenerales = crearControladorAjustes(modelos);
 
-  const ingeniero = requiereRol('ingeniero');
-  const inspector = requiereRol('inspector');
+  // "ingeniero": revisar y administrar (Ingeniero Supervisor y Supervisor Técnico)
+  // "inspector": hacer recorridos (Técnico Inspector y Supervisor Técnico)
+  const ingeniero = requiereSupervisar;
+  const inspector = requiereInspeccionar;
 
   const api = Router();
   api.use(sinCache);
@@ -32,6 +34,7 @@ export function rutasApi(modelos) {
   api.post('/auth/login', auth.login);
   api.post('/auth/logout', auth.logout);
   api.get('/auth/sesion', requiereSesion, auth.sesion);
+  api.put('/auth/contrasena', requiereSesion, auth.cambiarContrasena);
 
   // Carga inicial de la app
   api.get('/datos', requiereSesion, datos.obtener);
@@ -40,6 +43,7 @@ export function rutasApi(modelos) {
   api.get('/usuarios', ingeniero, usuarios.listar);
   api.post('/usuarios', ingeniero, usuarios.crear);
   api.put('/usuarios/:id', ingeniero, usuarios.actualizar);
+  api.delete('/usuarios/:id', ingeniero, usuarios.eliminar);
 
   // Rol semanal
   api.get('/cronograma', requiereSesion, cronograma.listar);

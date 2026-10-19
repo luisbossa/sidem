@@ -180,6 +180,13 @@
   border-color: #f3c4c4;
 }
 
+/* Cambiar contraseña: mismo botón, sin el rojo de "salir" */
+.topbar-password:hover:not(:disabled) {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-color: var(--border-strong);
+}
+
 .topbar-logout:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
@@ -238,6 +245,22 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Menú de 6 opciones (Supervisor Técnico) en la barra inferior: texto un poco más chico para que quepa.
+   El primer hijo es la etiqueta "Menú", por eso la sexta opción es el séptimo hijo.
+   Desde 1024px el menú pasa a la barra lateral y no hace falta. */
+@media (max-width: 1023.98px) {
+  .side-nav:has(.nav-item:nth-child(7)) .nav-item {
+    padding: 6px 2px;
+    font-size: 10px;
+    letter-spacing: -0.01em;
+  }
+
+  .side-nav:has(.nav-item:nth-child(7)) .nav-item .icon {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 .nav-item.active {

@@ -1,14 +1,5 @@
-/* Historial del ingeniero: filtros y recorridos cancelados.
+/* Historial del ingeniero: filtros.
    La base de .history-filters se comparte con technician-reports.css. */
-.cancel-section {
-  margin-top: 22px;
-}
-
-.cancel-title {
-  margin: 0 0 10px;
-  color: #991b1b;
-}
-
 @media (min-width: 768px) {
   .history-filters {
     grid-template-columns: repeat(2, minmax(210px, 1fr)) auto;

@@ -1,16 +1,22 @@
-/* Controlador del rol semanal. Todos lo consultan; solo el ingeniero lo modifica. */
+/* Controlador del rol semanal. Todos lo consultan; lo modifica quien supervisa.
+   Se puede asignar a cualquiera que haga recorridos (técnico o Supervisor Técnico). */
 import { texto, dia } from '../utils/validation.js';
 import { solicitudInvalida, noEncontrado } from '../utils/errors.js';
+import { puedeInspeccionar } from '../../public/js/core/roles.js';
+import { finDeSemanaRol } from '../utils/dates.js';
 
 export function crearControladorCronograma({ semanas, usuarios }) {
   function leerDatos(cuerpo, usuarioSesion) {
+    // La semana del rol va de lunes a viernes: el cierre lo calcula el servidor
     const inicio = dia(cuerpo.inicio, 'Fecha de inicio');
-    const fin = dia(cuerpo.fin, 'Fecha de cierre');
-    if (fin < inicio) throw solicitudInvalida('La fecha de cierre no puede ser anterior a la de inicio.');
+    if (new Date(inicio + 'T00:00:00Z').getUTCDay() !== 1) {
+      throw solicitudInvalida('La semana del rol debe empezar un lunes.', 'Fecha de inicio no válida');
+    }
+    const fin = finDeSemanaRol(inicio);
 
     const tecnico = usuarios.buscar(texto(cuerpo.tecnicoId, 'Técnico', { requerido: true, max: 80 }));
-    if (!tecnico || tecnico.rol !== 'inspector' || tecnico.estado !== 'Activo') {
-      throw solicitudInvalida('Debe asignar un técnico inspector activo.', 'Técnico no válido');
+    if (!tecnico || !puedeInspeccionar(tecnico.rol) || tecnico.estado !== 'Activo') {
+      throw solicitudInvalida('Debe asignar un técnico inspector o supervisor técnico activo.', 'Técnico no válido');
     }
     return {
       inicio,

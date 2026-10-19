@@ -6,9 +6,11 @@ import { Inspecciones } from './inspection.js';
 import { Cancelaciones } from './cancellation.js';
 import { RecorridosAbiertos } from './route-draft.js';
 import { Ajustes } from './settings.js';
+import { Fotos } from './photo.js';
 
-export function crearModelos(db) {
+export function crearModelos(db, { carpetaFotos }) {
   return {
+    fotos: new Fotos(db, carpetaFotos),
     usuarios: new Usuarios(db),
     sesiones: new Sesiones(db),
     semanas: new SemanasRol(db),

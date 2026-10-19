@@ -4,20 +4,20 @@ import { recorridoACargo } from './route-drafts.js';
 import { texto, opcion } from '../utils/validation.js';
 import { solicitudInvalida, noEncontrado, prohibido, conflicto } from '../utils/errors.js';
 import { ahoraISO } from '../utils/dates.js';
+import { puedeSupervisar, participoEnInforme } from '../../public/js/core/roles.js';
 
 const NOMBRE_TIPO = { manana: 'mañana', tarde: 'tarde' };
 
 export function crearControladorInspecciones({ inspecciones, recorridos }) {
   return {
-    /* El ingeniero ve todos los informes; el técnico, los que completó o inició */
+    /* Quien supervisa ve todos los informes; el técnico, los que completó o inició */
     listar(req, res) {
-      res.json(inspecciones.listar(req.usuario.rol === 'ingeniero' ? null : req.usuario.id));
+      res.json(inspecciones.listar(puedeSupervisar(req.usuario.rol) ? null : req.usuario.id));
     },
 
     buscar(req, res) {
       const informe = inspecciones.buscar(req.params.id);
-      const participo = informe && (informe.inspectorId === req.usuario.id || informe.iniciadoPorId === req.usuario.id);
-      if (!informe || (req.usuario.rol !== 'ingeniero' && !participo)) throw noEncontrado('El informe no existe.');
+      if (!informe || (!puedeSupervisar(req.usuario.rol) && !participoEnInforme(informe, req.usuario.id))) throw noEncontrado('El informe no existe.');
       res.json(informe);
     },
 
@@ -57,6 +57,10 @@ export function crearControladorInspecciones({ inspecciones, recorridos }) {
     revisar(req, res) {
       const informe = inspecciones.buscar(req.params.id);
       if (!informe) throw noEncontrado('El informe no existe.');
+      // Un Supervisor Técnico no revisa los recorridos en los que participó
+      if (participoEnInforme(informe, req.usuario.id)) {
+        throw prohibido('No puede revisar un informe de un recorrido en el que usted participó. Debe revisarlo otro ingeniero o supervisor.', 'Revisión no permitida');
+      }
       const estadoRevision = opcion(req.body?.estadoRevision, 'Resolución', ['Aprobada', 'Con observaciones']);
       const observaciones = texto(req.body?.observaciones, 'Observaciones', { max: 2000 });
       if (estadoRevision === 'Con observaciones' && !observaciones) {

@@ -12,6 +12,8 @@ export const estado = {
   justificacionesSistemas: {},
   ordenRecorrido: [],
   mostrarJustificacionesPendientes: false,
+  // true mientras está abierto el formulario de un sistema (para reanudar en él)
+  enFormulario: false,
 
   // Filtros de listados
   filtroTecnicoActivo: null,

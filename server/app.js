@@ -14,9 +14,11 @@ import { manejarErrores, paginaNoEncontrada } from './middleware/error-handler.j
 import { rutasWeb } from './routes/web.js';
 import { rutasApi } from './routes/api.js';
 import { icono } from '../public/js/ui/icons.js';
+import { puedeInspeccionar, puedeSupervisar } from '../public/js/core/roles.js';
 
-export function crearApp(db) {
-  const modelos = crearModelos(db);
+/* opciones.carpetaFotos: dónde guardar las fotos (los tests usan una carpeta temporal) */
+export function crearApp(db, { carpetaFotos = config.carpetaFotos } = {}) {
+  const modelos = crearModelos(db, { carpetaFotos });
   const app = express();
 
   // Vistas EJS con layouts
@@ -25,6 +27,9 @@ export function crearApp(db) {
   app.use(expressLayouts);
   app.set('layout', 'layouts/app');
   app.locals.icono = icono; // los mismos iconos SVG que usa el navegador
+  // Permisos por rol para las vistas (los mismos que usan el navegador y la API)
+  app.locals.puedeInspeccionar = puedeInspeccionar;
+  app.locals.puedeSupervisar = puedeSupervisar;
 
   app.disable('x-powered-by');
   // Detrás del proxy (Vercel o IIS), req.ip debe salir de X-Forwarded-For (bloqueo de login por IP)

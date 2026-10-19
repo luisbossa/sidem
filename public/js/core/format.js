@@ -1,8 +1,34 @@
 /* Formato de fechas, horas y duraciones. */
 import { icono } from '../ui/icons.js';
 
-export const formatearFechaCompleta = d => new Date(d).toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-export const formatearFechaCorta = d => new Date(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' });
+/* Un día "AAAA-MM-DD" (como las semanas del rol) se interpreta en hora local. new Date('2026-10-19') lo toma
+   como medianoche UTC, que en Costa Rica (UTC-6) todavía es el día anterior: un lunes se mostraría como domingo. */
+export function aFecha(d) {
+  if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    const [y, m, dia] = d.split('-').map(Number);
+    return new Date(y, m - 1, dia);
+  }
+  return new Date(d);
+}
+
+export const formatearFechaCompleta = d => aFecha(d).toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+export const formatearFechaCorta = d => aFecha(d).toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' });
+/* "lunes 19 oct 2026" */
+export const formatearDiaSemana = d => aFecha(d).toLocaleDateString('es-CR', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' });
+
+/* Rol semanal: de lunes a viernes */
+export const DIAS_SEMANA_ROL = 5;
+export function sumarDias(dia, n) {
+  const f = aFecha(dia);
+  f.setDate(f.getDate() + n);
+  return fechaLocalISO(f);
+}
+/* Lunes de la semana a la que pertenece un día (sábado y domingo pasan al lunes siguiente) */
+export function lunesDeLaSemana(dia) {
+  const diaSemana = aFecha(dia).getDay(); // 0 domingo … 6 sábado
+  if (diaSemana === 1) return dia;
+  return sumarDias(dia, diaSemana === 0 ? 1 : diaSemana === 6 ? 2 : 1 - diaSemana);
+}
 export const formatearHoraExacta = d => new Date(d).toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
 export function formatearSegundos(s) {

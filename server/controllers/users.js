@@ -1,12 +1,14 @@
-/* Controlador de usuarios (solo Ingeniero Supervisor). */
+/* Controlador de usuarios (Ingeniero Supervisor y Supervisor Técnico). */
 import { generarHash } from '../security/passwords.js';
 import { cerrarSesionesDeUsuario } from '../security/sessions.js';
 import { texto, opcion } from '../utils/validation.js';
 import { solicitudInvalida, noEncontrado, conflicto } from '../utils/errors.js';
+import { diaLocal } from '../utils/dates.js';
+import { ROLES, puedeInspeccionar, puedeSupervisar } from '../../public/js/core/roles.js';
 
-const ROLES = ['inspector', 'ingeniero'];
 const ESTADOS = ['Activo', 'Inactivo / Vacaciones'];
-export const TURNOS = ['Diurno (06:00 - 14:00)', 'Mixto (14:00 - 22:00)', 'Nocturno (22:00 - 06:00)', 'Administrativo / Guardia'];
+const TURNOS = ['Diurno (06:00 - 14:00)', 'Mixto (14:00 - 22:00)', 'Nocturno (22:00 - 06:00)', 'Administrativo / Guardia'];
+const TURNO_INGENIERO = 'Ingeniería / Supervisión';
 
 function leerDatos(cuerpo, { esNuevo }) {
   const rol = opcion(cuerpo.rol, 'Rol', ROLES);
@@ -24,7 +26,8 @@ function leerDatos(cuerpo, { esNuevo }) {
     rol,
     usuario,
     cedula: texto(cuerpo.cedula, 'Cédula', { max: 30 }),
-    turno: rol === 'ingeniero' ? 'Ingeniería / Supervisión' : opcion(cuerpo.turno, 'Turno', TURNOS),
+    // El formulario ya no pide el turno: es opcional (null = sin indicar)
+    turno: rol === 'ingeniero' ? TURNO_INGENIERO : (cuerpo.turno ? opcion(cuerpo.turno, 'Turno', TURNOS) : null),
     estado: opcion(cuerpo.estado, 'Estado', ESTADOS),
     passwordHash: password ? generarHash(password) : null
   };
@@ -36,6 +39,17 @@ export function crearControladorUsuarios({ usuarios, sesiones }) {
     if (ocupado) throw conflicto(`El usuario "${usuario}" ya pertenece a otro profesional (${ocupado.nombre}).`, 'Usuario duplicado');
   }
 
+  /* Semanas del rol de hoy en adelante o un recorrido en curso impiden eliminarlo o quitarle los recorridos */
+  function verificarSinPendientes(usuario, accion) {
+    const semanas = usuarios.semanasPendientes(usuario.id, diaLocal());
+    if (semanas > 0) {
+      throw conflicto(`${usuario.nombre} tiene ${semanas} semana(s) del rol semanal asignadas desde hoy en adelante. Reasígnelas a otro técnico antes de ${accion}.`, 'Tiene semanas asignadas');
+    }
+    if (usuarios.tieneRecorridoAbierto(usuario.id)) {
+      throw conflicto(`${usuario.nombre} tiene un recorrido en curso. Debe enviarlo o cancelarlo, o que otro técnico lo continúe, antes de ${accion}.`, 'Tiene un recorrido en curso');
+    }
+  }
+
   return {
     listar(req, res) {
       res.json(usuarios.listar());
@@ -44,7 +58,7 @@ export function crearControladorUsuarios({ usuarios, sesiones }) {
     crear(req, res) {
       const datos = leerDatos(req.body || {}, { esNuevo: true });
       verificarUsuarioLibre(datos.usuario);
-      res.status(201).json(usuarios.crear(datos));
+      res.status(201).json(usuarios.crear({ ...datos, turno: datos.turno ?? '' }));
     },
 
     actualizar(req, res) {
@@ -52,12 +66,17 @@ export function crearControladorUsuarios({ usuarios, sesiones }) {
       if (!actual) throw noEncontrado('El usuario no existe.');
       const datos = leerDatos(req.body || {}, { esNuevo: false });
       verificarUsuarioLibre(datos.usuario, actual.id);
+      // Sin turno indicado se conserva el que tenía (salvo el de ingeniero, si deja de serlo)
+      if (datos.turno === null) datos.turno = actual.turno === TURNO_INGENIERO ? '' : actual.turno;
 
-      // Evita que el sistema quede sin ingenieros activos (incluido desactivarse a sí mismo)
-      const dejaDeSerIngenieroActivo = actual.rol === 'ingeniero' && actual.estado === 'Activo' && (datos.rol !== 'ingeniero' || datos.estado !== 'Activo');
-      if (dejaDeSerIngenieroActivo && (actual.id === req.usuario.id || usuarios.contarIngenierosActivos(actual.id) === 0)) {
-        throw conflicto('No puede quitar el rol de ingeniero ni desactivar su propia cuenta o la del último ingeniero activo.', 'Cambio no permitido');
+      // Evita que el sistema quede sin nadie que revise (incluido quitarse ese permiso a sí mismo)
+      const supervisaba = puedeSupervisar(actual.rol) && actual.estado === 'Activo';
+      const dejaDeSupervisar = supervisaba && (!puedeSupervisar(datos.rol) || datos.estado !== 'Activo');
+      if (dejaDeSupervisar && (actual.id === req.usuario.id || usuarios.contarSupervisoresActivos(actual.id) === 0)) {
+        throw conflicto('No puede quitarse a sí mismo el permiso de revisión ni desactivar su propia cuenta, ni dejar el sistema sin ingenieros o supervisores técnicos activos.', 'Cambio no permitido');
       }
+      // Si deja de hacer recorridos, no puede quedar a cargo de uno ni con semanas del rol pendientes
+      if (puedeInspeccionar(actual.rol) && !puedeInspeccionar(datos.rol)) verificarSinPendientes(actual, 'cambiarle el rol');
 
       const actualizado = usuarios.actualizar(actual.id, datos);
       // Si se desactiva, cambia de rol o de contraseña, se cierran sus otras sesiones
@@ -65,6 +84,21 @@ export function crearControladorUsuarios({ usuarios, sesiones }) {
         cerrarSesionesDeUsuario(sesiones, actual.id, actual.id === req.usuario.id ? req : null);
       }
       res.json(actualizado);
+    },
+
+    /* Elimina un usuario conservando su historial (ver Usuarios.eliminar) */
+    eliminar(req, res) {
+      const usuario = usuarios.buscar(req.params.id);
+      if (!usuario) throw noEncontrado('El usuario no existe.');
+      if (usuario.id === req.usuario.id) throw conflicto('No puede eliminar su propia cuenta.', 'Eliminación no permitida');
+      if (puedeSupervisar(usuario.rol) && usuario.estado === 'Activo' && usuarios.contarSupervisoresActivos(usuario.id) === 0) {
+        throw conflicto('No puede eliminar al último ingeniero o supervisor técnico activo.', 'Eliminación no permitida');
+      }
+      verificarSinPendientes(usuario, 'eliminarlo');
+
+      usuarios.eliminar(usuario.id);
+      cerrarSesionesDeUsuario(sesiones, usuario.id);
+      res.status(204).end();
     }
   };
 }

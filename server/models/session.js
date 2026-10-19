@@ -15,7 +15,7 @@ export class Sesiones {
     return this.db.prepare(`
       SELECT u.id, u.nombre, u.rol, u.usuario
       FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id
-      WHERE s.token_hash = ? AND s.expira_en > ? AND u.estado = 'Activo'`).get(tokenHash, ahora) || null;
+      WHERE s.token_hash = ? AND s.expira_en > ? AND u.estado = 'Activo' AND u.eliminado_en IS NULL`).get(tokenHash, ahora) || null;
   }
 
   eliminar(tokenHash) {

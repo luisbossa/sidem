@@ -92,65 +92,113 @@ export function solicitarJustificacionCancelacion() {
   });
 }
 
-/* Pide usuario y contraseña. "verificar(usuario, password)" es asíncrona: si lanza un error,
-   el diálogo sigue abierto y muestra el mensaje. Resuelve con el resultado de verificar, o null si se cancela. */
-export function solicitarCredenciales(titulo, mensaje, verificar, textoConfirmar = 'Confirmar') {
+/* Formulario dentro del diálogo.
+   - campos: [{ id, etiqueta, tipo, autocomplete, ayuda }] (los ids se usan tal cual en el HTML)
+   - leer(valores): valida en el navegador; devuelve un mensaje de error o '' si todo está bien
+   - verificar(valores): asíncrona; si lanza un error el diálogo sigue abierto y muestra el mensaje
+   Resuelve con el resultado de verificar, o null si se cancela. */
+function formularioEnDialogo({ titulo, icono, mensaje, campos, textoConfirmar, leer = () => '', verificar }) {
   return new Promise(resolve => {
-    prepararDialogo('info', 'usuarios', titulo);
+    prepararDialogo('info', icono, titulo);
     $('dialogoMensaje').innerHTML = `
-      <form id="formCredenciales" class="form dialog-form" novalidate>
-        <p id="txtCredencialesMensaje"></p>
-        <div class="form-field">
-          <label for="txtCredencialUsuario">Su usuario</label>
-          <input id="txtCredencialUsuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="60" />
-        </div>
-        <div class="form-field">
-          <label for="txtCredencialPassword">Su contraseña</label>
-          <input id="txtCredencialPassword" type="password" autocomplete="current-password" maxlength="128" />
-        </div>
-        <small id="errorCredenciales" class="dialog-error hidden"></small>
+      <form id="formDialogo" class="form dialog-form" novalidate>
+        <p id="txtFormDialogoMensaje"></p>
+        ${campos.map(c => `
+          <div class="form-field">
+            <label for="${c.id}"></label>
+            <input id="${c.id}" type="${c.tipo || 'text'}" autocomplete="${c.autocomplete || 'off'}" autocapitalize="none" spellcheck="false" maxlength="128" />
+            ${c.ayuda ? `<small id="${c.id}Ayuda"></small>` : ''}
+          </div>`).join('')}
+        <small id="errorFormDialogo" class="dialog-error hidden" role="alert"></small>
       </form>`;
-    $('txtCredencialesMensaje').textContent = mensaje;
+    // Los textos se asignan con textContent para no interpretarlos como HTML
+    $('txtFormDialogoMensaje').textContent = mensaje;
+    campos.forEach(c => {
+      document.querySelector(`label[for="${c.id}"]`).textContent = c.etiqueta;
+      if (c.ayuda) $(`${c.id}Ayuda`).textContent = c.ayuda;
+    });
     $('dialogoBotones').innerHTML = `
-      <button id="btnCredencialesCancelar" type="button" class="btn btn-secondary">Cancelar</button>
-      <button id="btnCredencialesConfirmar" type="submit" form="formCredenciales" class="btn btn-primary"></button>`;
-    $('btnCredencialesConfirmar').textContent = textoConfirmar;
+      <button id="btnFormDialogoCancelar" type="button" class="btn btn-secondary">Cancelar</button>
+      <button id="btnFormDialogoConfirmar" type="submit" form="formDialogo" class="btn btn-primary"></button>`;
+    $('btnFormDialogoConfirmar').textContent = textoConfirmar;
 
     const mostrarError = texto => {
-      $('errorCredenciales').textContent = texto;
-      $('errorCredenciales').classList.remove('hidden');
+      $('errorFormDialogo').textContent = texto;
+      $('errorFormDialogo').classList.remove('hidden');
     };
+    const valores = () => Object.fromEntries(campos.map(c => [c.id, $(c.id).value]));
 
-    $('btnCredencialesCancelar').onclick = () => {
+    $('btnFormDialogoCancelar').onclick = () => {
       cerrarDialogo();
       resolve(null);
     };
-    $('formCredenciales').onsubmit = async e => {
+    $('formDialogo').onsubmit = async e => {
       e.preventDefault();
-      const usuario = $('txtCredencialUsuario').value.trim();
-      const password = $('txtCredencialPassword').value;
-      if (!usuario || !password) {
-        mostrarError('Escriba su usuario y su contraseña.');
+      const datos = valores();
+      const error = leer(datos);
+      if (error) {
+        mostrarError(error);
         return;
       }
-      const boton = $('btnCredencialesConfirmar');
+      const boton = $('btnFormDialogoConfirmar');
       boton.disabled = true;
       try {
-        const resultado = await verificar(usuario, password);
+        const resultado = await verificar(datos);
         cerrarDialogo();
         resolve(resultado);
-      } catch (error) {
-        mostrarError(error.message);
-        $('txtCredencialPassword').value = '';
-        $('txtCredencialPassword').focus();
+      } catch (err) {
+        mostrarError(err.message);
+        // Se borran las contraseñas escritas para volver a intentarlo
+        campos.filter(c => c.tipo === 'password').forEach(c => { $(c.id).value = ''; });
+        const primeraClave = campos.find(c => c.tipo === 'password');
+        if (primeraClave) $(primeraClave.id).focus();
       } finally {
         boton.disabled = false;
       }
     };
     abrirDialogo();
     setTimeout(() => {
-      const campo = $('txtCredencialUsuario');
+      const campo = $(campos[0].id);
       if (campo) campo.focus();
     }, 50);
+  });
+}
+
+/* Pide usuario y contraseña (por ejemplo, para continuar el recorrido de otro técnico) */
+export function solicitarCredenciales(titulo, mensaje, verificar, textoConfirmar = 'Confirmar') {
+  return formularioEnDialogo({
+    titulo,
+    icono: 'usuarios',
+    mensaje,
+    textoConfirmar,
+    campos: [
+      { id: 'txtCredencialUsuario', etiqueta: 'Su usuario', autocomplete: 'username' },
+      { id: 'txtCredencialPassword', etiqueta: 'Su contraseña', tipo: 'password', autocomplete: 'current-password' }
+    ],
+    leer: v => (v.txtCredencialUsuario.trim() && v.txtCredencialPassword ? '' : 'Escriba su usuario y su contraseña.'),
+    verificar: v => verificar(v.txtCredencialUsuario.trim(), v.txtCredencialPassword)
+  });
+}
+
+/* Pide la contraseña actual y la nueva dos veces. "verificar(actual, nueva)" la cambia en el servidor. */
+export function solicitarCambioContrasena(minimo, verificar) {
+  return formularioEnDialogo({
+    titulo: 'Cambiar contraseña',
+    icono: 'candado',
+    mensaje: 'Por seguridad, escriba primero su contraseña actual. Al cambiarla se cerrarán sus sesiones abiertas en otros equipos.',
+    textoConfirmar: 'Cambiar contraseña',
+    campos: [
+      { id: 'txtContrasenaActual', etiqueta: 'Contraseña actual', tipo: 'password', autocomplete: 'current-password' },
+      { id: 'txtContrasenaNueva', etiqueta: 'Contraseña nueva', tipo: 'password', autocomplete: 'new-password', ayuda: `Al menos ${minimo} caracteres y distinta de la actual.` },
+      { id: 'txtContrasenaConfirmar', etiqueta: 'Repita la contraseña nueva', tipo: 'password', autocomplete: 'new-password' }
+    ],
+    leer: v => {
+      if (!v.txtContrasenaActual || !v.txtContrasenaNueva || !v.txtContrasenaConfirmar) return 'Complete los tres campos.';
+      if (v.txtContrasenaNueva.length < minimo) return `La contraseña nueva debe tener al menos ${minimo} caracteres.`;
+      if (v.txtContrasenaNueva !== v.txtContrasenaConfirmar) return 'La contraseña nueva y su confirmación no coinciden.';
+      if (v.txtContrasenaNueva === v.txtContrasenaActual) return 'La contraseña nueva debe ser distinta de la actual.';
+      return '';
+    },
+    verificar: v => verificar(v.txtContrasenaActual, v.txtContrasenaNueva).then(() => true)
   });
 }

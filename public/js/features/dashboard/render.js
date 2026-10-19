@@ -2,10 +2,11 @@
 import { $, escapar } from '../../core/dom.js';
 import { estado } from '../../core/state.js';
 import { formatearSegundos } from '../../core/format.js';
+import { puedeSupervisar } from '../../core/roles.js';
 import { leerRegistros } from '../../data/storage.js';
 import { icono as iconoSvg } from '../../ui/icons.js';
 import {
-  registrosPeriodoDashboard, textoPeriodo, extraerSerieConsumo, resumenSerie, formatoNumeroDashboard,
+  registrosPeriodoDashboard, textoPeriodo, extraerSerieConsumo, resumenSerie, formatoNumeroDashboard, formatoConsumo, tieneBancos,
   etiquetaFechaDashboard, calcularNoConformidades, calcularRankingFallas, calcularCumplimiento, promedioDuracion
 } from './calculations.js';
 
@@ -20,8 +21,8 @@ const PERIODOS = [
    y tipo (define la clase indicator-<tipo> y su color en css/components/indicator.css) */
 const CONSUMOS = [
   { campo: 'consumoDiarioAgua', titulo: 'Consumo de agua', etiqueta: 'Consumo de agua', icono: 'gota', unidad: 'm³', unidadKpi: 'm³', color: '#0284c7', tipo: 'water', enlace: 'Analizar consumo diario y mensual' },
-  { campo: '__dieselGenEstimado', titulo: 'Diésel estimado · Generador eléctrico', etiqueta: 'Diésel · Generador', icono: 'engranaje', unidad: '% tanque', unidadKpi: '%', color: '#ea580c', tipo: 'diesel-generator', sub: 'Consumo estimado por reducción del nivel' },
-  { campo: '__dieselIncendiosEstimado', titulo: 'Diésel estimado · Supresión Contra Incendios', etiqueta: 'Diésel · Contra incendios', icono: 'llama', unidad: '% tanque', unidadKpi: '%', color: '#b91c1c', tipo: 'diesel-fire', sub: 'Consumo estimado por reducción del nivel' },
+  { campo: '__dieselGenEstimado', titulo: 'Diésel estimado · Generador eléctrico', etiqueta: 'Diésel · Generador', icono: 'engranaje', unidad: 'de tanque', unidadKpi: 'de tanque', color: '#ea580c', tipo: 'diesel-generator', sub: 'Consumo estimado por reducción del nivel' },
+  { campo: '__dieselIncendiosEstimado', titulo: 'Diésel estimado · Supresión Contra Incendios', etiqueta: 'Diésel · Contra incendios', icono: 'llama', unidad: 'de tanque', unidadKpi: 'de tanque', color: '#b91c1c', tipo: 'diesel-fire', sub: 'Consumo estimado por reducción del nivel' },
   { campo: '__oxigenoEstimado', titulo: 'Consumo estimado de oxígeno · Banco de gases', etiqueta: 'Oxígeno · Reducción', icono: 'manifoldOxigeno', unidad: 'PSI', unidadKpi: 'PSI', color: '#16a34a', tipo: 'oxygen', sub: 'Reducción combinada de ambos bancos' },
   { campo: '__aireInstrumentalEstimado', titulo: 'Consumo estimado · Aire instrumental', etiqueta: 'Aire instrumental', icono: 'manifoldAire', unidad: 'PSI', unidadKpi: 'PSI', color: '#c24141', tipo: 'instrument-air', sub: 'Reducción combinada de ambos bancos' }
 ];
@@ -84,14 +85,20 @@ function tarjetaIndicador({ tipo, icono, titulo, lectura, unidad = '', lecturaTe
 
 function indicadorConsumo(c, serie) {
   const r = resumenSerie(serie);
-  const detalle = c.sub
-    ? `${c.sub} · ${r.registros} comparación(es)`
-    : `${r.registros} registro(s) · Promedio ${serie.length ? formatoNumeroDashboard(r.promedio) : '—'} m³`;
+  // Oxígeno y aire instrumental: total de cada banco además del total de ambos
+  const porBanco = tieneBancos(c.campo)
+    ? ['izquierdo', 'derecho'].map(lado => serie.reduce((a, x) => a + (x[lado]?.valor || 0), 0))
+    : null;
+  const detalle = porBanco
+    ? `Izq. ${formatoNumeroDashboard(porBanco[0])} ${c.unidad} · Der. ${formatoNumeroDashboard(porBanco[1])} ${c.unidad} · ${r.registros} comparación(es)`
+    : c.sub
+      ? `${c.sub} · ${r.registros} comparación(es)`
+      : `${r.registros} registro(s) · Promedio ${serie.length ? formatoNumeroDashboard(r.promedio) : '—'} m³`;
   return tarjetaIndicador({
     tipo: c.tipo,
     icono: c.icono,
     titulo: c.etiqueta,
-    lectura: serie.length ? formatoNumeroDashboard(r.total) : '—',
+    lectura: serie.length ? formatoConsumo(r.total, c.campo) : '—',
     unidad: c.unidadKpi,
     estadoLuz: serie.length ? luz('ok', 'Con lecturas') : luz('idle', 'Sin lecturas'),
     detalle,
@@ -112,7 +119,7 @@ function luzCumplimiento(c) {
 export function renderDashboardIngenieria() {
   const div = $('dashboardContenido');
   if (!div) return;
-  if (!estado.usuarioSesion || estado.usuarioSesion.rol !== 'ingeniero') {
+  if (!estado.usuarioSesion || !puedeSupervisar(estado.usuarioSesion.rol)) {
     div.innerHTML = '<div class="alert alert-error">Acceso exclusivo para Ingeniería.</div>';
     return;
   }

@@ -128,7 +128,7 @@ data/                       Base SQLite (se crea al arrancar; no se versiona)
 
 | Tabla | Contenido |
 |---|---|
-| `usuarios` | Personal con acceso: rol (`inspector` / `ingeniero`), usuario, hash de contraseña, turno, estado |
+| `usuarios` | Personal con acceso: rol (`inspector` / `ingeniero` / `supervisor`), usuario, hash de contraseña, turno, estado |
 | `sesiones` | Sesiones abiertas (hash SHA-256 del token y vencimiento) |
 | `semanas_rol` | Rol semanal: técnico asignado (`tecnico_id`) por semana |
 | `inspecciones` | Informe de cada recorrido: técnico, mañana/tarde, horas, resultado y estado de revisión. Un recorrido de mañana y uno de tarde por día para toda la Casa de Máquinas. `inspector_id` es quien lo completó; `iniciado_por_id`, quien lo inició si fue otro técnico |
@@ -139,7 +139,9 @@ data/                       Base SQLite (se crea al arrancar; no se versiona)
 | `recorridos_abiertos` | Recorridos iniciados y aún no enviados: quién lo inició, quién lo tiene a cargo y el borrador (se restaura al recargar o cambiar de equipo) |
 | `ajustes` | Opciones del ingeniero, por ejemplo si un técnico puede continuar el recorrido de otro |
 
-Los usuarios no se borran: se marcan como *Inactivo / Vacaciones* para conservar su historial.
+**Roles:** *Técnico Inspector* (`inspector`) hace recorridos; *Ingeniero Supervisor* (`ingeniero`) revisa informes y administra usuarios, rol semanal y ajustes; *Supervisor Técnico* (`supervisor`) puede hacer las dos cosas, pero no revisa informes de recorridos en los que participó. Los permisos están en `public/js/core/roles.js`, que comparten el servidor y el navegador.
+
+Los usuarios no se borran de la base: se marcan como *Inactivo / Vacaciones* o, con el botón **Eliminar**, como eliminados (`eliminado_en`). Un usuario eliminado ya no aparece ni puede entrar, y su nombre de usuario queda libre; sus informes, cancelaciones y mensajes conservan su nombre. No se puede eliminar a uno mismo, al último ingeniero activo, ni a un técnico con semanas del rol pendientes o un recorrido en curso.
 
 ## API
 
@@ -148,8 +150,9 @@ Todas las rutas responden JSON; los errores tienen la forma `{ "error": "mensaje
 | Método y ruta | Quién | Uso |
 |---|---|---|
 | `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/sesion` | todos | Sesión |
+| `PUT /api/auth/contrasena` | con sesión | Cambiar la contraseña propia (pide la actual; cierra las sesiones en otros equipos) |
 | `GET /api/datos` | con sesión | Todo lo que la app necesita al cargar, según el rol |
-| `GET/POST /api/usuarios` · `PUT /api/usuarios/:id` | ingeniero | Gestión de usuarios |
+| `GET/POST /api/usuarios` · `PUT/DELETE /api/usuarios/:id` | ingeniero | Gestión de usuarios (eliminar conserva el historial) |
 | `GET /api/cronograma` | con sesión | Rol semanal |
 | `POST /api/cronograma` · `PUT/DELETE /api/cronograma/:id` | ingeniero | Programar, editar y eliminar semanas |
 | `GET /api/inspecciones` · `GET /api/inspecciones/:id` | con sesión | El ingeniero ve todos; el técnico, los que completó o inició |

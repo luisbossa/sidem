@@ -5,6 +5,7 @@
    de mañana o de tarde de hoy y el informe sale con la fecha en que se completa. */
 import crypto from 'node:crypto';
 import { ahoraISO, diaLocal } from '../utils/dates.js';
+import { dondeQuedo } from '../../public/js/core/avance.js';
 
 const SELECT = `
   SELECT r.id, r.tipo_recorrido AS tipoRecorrido, r.fecha_local AS fechaLocal,
@@ -23,10 +24,14 @@ function convertir(fila) {
   return { ...fila, datos };
 }
 
-/* Resumen para listados: sin las respuestas del borrador */
+/* Resumen para listados: sin las respuestas del borrador, pero con dónde quedó */
 function resumir(r) {
   const { datos, ...resto } = r;
-  return { ...resto, sistemasIniciados: Array.isArray(datos?.ordenRecorrido) ? datos.ordenRecorrido.length : 0 };
+  return {
+    ...resto,
+    sistemasIniciados: Array.isArray(datos?.ordenRecorrido) ? datos.ordenRecorrido.length : 0,
+    quedoEn: dondeQuedo(datos)
+  };
 }
 
 export class RecorridosAbiertos {

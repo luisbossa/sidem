@@ -8,14 +8,7 @@ import { sincronizar, cerrarSesionApi, leerRegistros, obtenerSemanaVigente, leer
 import { mostrarAlertaVisual } from '../ui/dialogs.js';
 import { mostrarVista } from '../ui/navigation.js';
 import { entrarEnRecorrido } from './inspection.js';
-
-const BOTONES_INSPECTOR = ['btnIrInicioInspector', 'btnIrDevolucionesInspector', 'btnIrCronogramaInspector'];
-const BOTONES_INGENIERO = ['btnIrDashboardIngeniero', 'btnIrHistorialIngeniero', 'btnIrCronogramaIngeniero', 'btnIrTecnicosIngeniero'];
-
-/* El servidor solo renderiza el menú del rol de la sesión; los botones de otro rol no existen */
-function alternarBotones(ids, visibles) {
-  ids.forEach(id => $(id)?.classList.toggle('hidden', !visibles));
-}
+import { PERFILES, puedeInspeccionar } from '../core/roles.js';
 
 /* "Ing. Juan Pérez" → "JP" */
 function iniciales(nombre) {
@@ -29,31 +22,24 @@ export function aplicarSesionUsuario() {
 
   $('txtNombreUsuario').textContent = usuario.nombre;
   $('avatarUsuario').textContent = iniciales(usuario.nombre);
+  // El servidor solo renderiza el menú y las secciones que permite el rol de la sesión
+  const perfil = PERFILES[usuario.rol] || PERFILES.inspector;
   const badge = $('badgeRolUsuario');
-  const esInspector = usuario.rol === 'inspector';
+  badge.textContent = perfil.rolTexto;
+  badge.className = `role-badge ${perfil.rolClase}`;
+  $('estadoCabecera').textContent = perfil.estado;
 
-  alternarBotones(BOTONES_INSPECTOR, esInspector);
-  alternarBotones(BOTONES_INGENIERO, !esInspector);
-
-  if (esInspector) {
-    badge.textContent = 'Técnico Inspector';
-    badge.className = 'role-badge role-badge-inspector';
-    $('estadoCabecera').textContent = 'Inspector activo';
+  if (puedeInspeccionar(usuario.rol)) {
     verificarAlertasDevolucionesInspector();
     actualizarBannerGuardiaInspector();
-    mostrarVista('inicio');
-  } else {
-    badge.textContent = 'Ingeniero Supervisor';
-    badge.className = 'role-badge role-badge-engineer';
-    $('estadoCabecera').textContent = 'Supervisor activo';
-    mostrarVista('dashboard');
   }
+  mostrarVista(perfil.vistaInicial);
 }
 
 export function actualizarBloqueoNavegacionTecnico() {
-  const bloquear = Boolean(estado.inspeccionActiva && estado.usuarioSesion && estado.usuarioSesion.rol === 'inspector');
-  [...BOTONES_INSPECTOR, 'btnCerrarSesion'].forEach(id => {
-    const boton = $(id);
+  const bloquear = Boolean(estado.inspeccionActiva && estado.usuarioSesion && puedeInspeccionar(estado.usuarioSesion.rol));
+  // Todo el menú (el del Supervisor Técnico incluye las opciones de ingeniería) y el cierre de sesión
+  [...document.querySelectorAll('.nav-item'), $('btnCerrarSesion')].forEach(boton => {
     if (boton) {
       boton.disabled = bloquear;
       boton.title = bloquear ? 'Finalice el recorrido o cancélelo con una justificación.' : '';
@@ -63,7 +49,7 @@ export function actualizarBloqueoNavegacionTecnico() {
 
 export function actualizarBannerGuardiaInspector() {
   const usuario = estado.usuarioSesion;
-  if (!usuario || usuario.rol !== 'inspector') return;
+  if (!usuario || !puedeInspeccionar(usuario.rol)) return;
   const semActual = obtenerSemanaVigente();
   const banner = $('bannerGuardiaSemanalInspector');
 
@@ -79,7 +65,7 @@ export function actualizarBannerGuardiaInspector() {
 
 export function verificarAlertasDevolucionesInspector() {
   const usuario = estado.usuarioSesion;
-  if (!usuario || usuario.rol !== 'inspector') return;
+  if (!usuario || !puedeInspeccionar(usuario.rol)) return;
   const tieneObservaciones = leerRegistros().some(r => r.inspectorId === usuario.id && r.estadoRevision === 'Con observaciones');
   $('bannerAlertaObservaciones').classList.toggle('hidden', !tieneObservaciones);
 }
@@ -112,7 +98,7 @@ export async function restaurarProgreso() {
   $('fechaCabecera').textContent = formatearFechaCompleta(new Date());
   aplicarSesionUsuario();
 
-  if (estado.usuarioSesion.rol !== 'inspector') return;
+  if (!puedeInspeccionar(estado.usuarioSesion.rol)) return;
   // Solo vuelve el recorrido del que el técnico es responsable (si otro lo continuó, ya no le llega)
   const borrador = leerProgreso();
   if (borrador && borrador.inspeccionActiva) entrarEnRecorrido(borrador);

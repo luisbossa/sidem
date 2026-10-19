@@ -1,5 +1,6 @@
 /* Controlador de datos iniciales: todo lo que la app necesita al cargar, según el rol. */
 import { diaLocal } from '../utils/dates.js';
+import { puedeInspeccionar, puedeSupervisar } from '../../public/js/core/roles.js';
 
 export function crearControladorDatos({ usuarios, semanas, inspecciones, cancelaciones, recorridos, ajustes }) {
   /* Estado de los dos recorridos de hoy para toda la Casa de Máquinas */
@@ -17,16 +18,16 @@ export function crearControladorDatos({ usuarios, semanas, inspecciones, cancela
 
   return {
     obtener(req, res) {
-      const esIngeniero = req.usuario.rol === 'ingeniero';
-      const soloPropios = esIngeniero ? null : req.usuario.id;
+      const supervisa = puedeSupervisar(req.usuario.rol);
+      const soloPropios = supervisa ? null : req.usuario.id;
       const abiertos = recorridos.listarAbiertos();
       res.json({
         usuario: req.usuario,
-        usuarios: esIngeniero ? usuarios.listar() : [],
+        usuarios: supervisa ? usuarios.listar() : [],
         cronograma: semanas.listar(),
         registros: inspecciones.listar(soloPropios),
         cancelaciones: cancelaciones.listar(soloPropios),
-        progreso: esIngeniero ? null : (recorridos.delResponsable(req.usuario.id)?.datos ?? null),
+        progreso: puedeInspeccionar(req.usuario.rol) ? (recorridos.delResponsable(req.usuario.id)?.datos ?? null) : null,
         recorridosAbiertos: abiertos,
         recorridosHoy: recorridosDeHoy(abiertos),
         ajustes: ajustes.leer()

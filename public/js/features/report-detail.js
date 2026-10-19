@@ -5,6 +5,7 @@ import { URL_ESTILOS_APP } from '../core/paths.js';
 import { icono } from '../ui/icons.js';
 import { formatearFechaCompleta, formatearHoraExacta, claveFechaLocal, etiquetaTipoRecorrido } from '../core/format.js';
 import { SISTEMAS } from '../data/systems.js';
+import { puedeInspeccionar, puedeSupervisar, puedeRevisarInforme, participoEnInforme } from '../core/roles.js';
 import { leerRegistros, revisarInspeccion, responderInspeccion } from '../data/storage.js';
 import { mostrarAlertaVisual } from '../ui/dialogs.js';
 import { renderHistorial } from './history.js';
@@ -164,18 +165,21 @@ export function verDetalle(id, campoDestacadoId = '', sistemaDestacado = '') {
 
   const usuario = estado.usuarioSesion;
   const hallazgo = buscarHallazgo(r, campoDestacadoId, sistemaDestacado);
-  const esIngeniero = usuario && usuario.rol === 'ingeniero';
-  const esInspectorDuenio = usuario && usuario.rol === 'inspector' && r.inspectorId === usuario.id;
+  const supervisa = Boolean(usuario) && puedeSupervisar(usuario.rol);
+  // Un Supervisor Técnico no revisa los recorridos en los que participó
+  const puedeRevisar = puedeRevisarInforme(usuario, r);
+  const esInspectorDuenio = Boolean(usuario) && puedeInspeccionar(usuario.rol) && r.inspectorId === usuario.id;
 
   $('modalTitulo').textContent = `Informe · ${formatearFechaCompleta(r.fechaISO || r.horaInicioISO)}`;
-  $('btnGenerarPdfInforme').classList.toggle('hidden', !esIngeniero);
+  $('btnGenerarPdfInforme').classList.toggle('hidden', !supervisa);
 
   let html = plantillaAuditoria(r);
   if (hallazgo) html += plantillaHallazgo(hallazgo, r);
   if (r.historialConversacion && r.historialConversacion.length) html += plantillaConversacion(r.historialConversacion);
   else if (r.ingenieroRevisor) html += plantillaResolucion(r);
   html += SISTEMAS.map(s => plantillaSistema(s, r, hallazgo)).join('');
-  if (esIngeniero) html += plantillaRevisionIngeniero(r);
+  if (puedeRevisar) html += plantillaRevisionIngeniero(r);
+  else if (supervisa && participoEnInforme(r, usuario.id)) html += '<p class="alert alert-info">Usted participó en este recorrido: la revisión la debe hacer otro ingeniero o supervisor técnico.</p>';
   if (esInspectorDuenio && r.estadoRevision === 'Con observaciones') html += plantillaRespuestaTecnico(r);
 
   $('detalleContenido').innerHTML = html;
@@ -191,8 +195,8 @@ export function verDetalle(id, campoDestacadoId = '', sistemaDestacado = '') {
 
 export async function guardarRevisionIngeniero(id, nuevoEstado) {
   const usuario = estado.usuarioSesion;
-  if (!usuario || usuario.rol !== 'ingeniero') {
-    await mostrarAlertaVisual('Acceso Denegado', 'Solo un usuario autenticado como Ingeniero puede aprobar o emitir observaciones.', 'advertencia');
+  if (!puedeRevisarInforme(usuario, estado.registroDetalleActivo)) {
+    await mostrarAlertaVisual('Acceso Denegado', 'Solo un ingeniero o supervisor técnico que no participó en el recorrido puede aprobar o emitir observaciones.', 'advertencia');
     return;
   }
 
@@ -216,8 +220,8 @@ export async function guardarRevisionIngeniero(id, nuevoEstado) {
 
 export async function guardarRespuestaYReenviar(id) {
   const usuario = estado.usuarioSesion;
-  if (!usuario || usuario.rol !== 'inspector') {
-    await mostrarAlertaVisual('Acceso Denegado', 'Solo el técnico inspector responsable puede responder a las observaciones.', 'advertencia');
+  if (!usuario || !puedeInspeccionar(usuario.rol)) {
+    await mostrarAlertaVisual('Acceso Denegado', 'Solo el técnico responsable puede responder a las observaciones.', 'advertencia');
     return;
   }
 
@@ -269,7 +273,7 @@ const ESTILOS_PDF = `
 export async function generarPdfInforme() {
   const usuario = estado.usuarioSesion;
   const r = estado.registroDetalleActivo;
-  if (!usuario || usuario.rol !== 'ingeniero' || !r) {
+  if (!usuario || !puedeSupervisar(usuario.rol) || !r) {
     await mostrarAlertaVisual('Acceso denegado', 'Solo un ingeniero autorizado puede generar el PDF de una inspección.', 'advertencia');
     return;
   }

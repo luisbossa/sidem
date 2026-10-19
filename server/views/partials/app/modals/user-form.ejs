@@ -1,4 +1,4 @@
-<%# Crear o editar usuario (features/users.js). Los turnos vienen del controlador. %>
+<%# Crear o editar usuario (features/users.js). %>
 <div id="modalTecnico" class="modal-backdrop hidden" data-backdrop-action="close-user-modal">
   <section class="modal modal-form" role="dialog" aria-modal="true" aria-labelledby="modalTecnicoTitulo">
     <header class="modal-header">
@@ -14,9 +14,10 @@
         </div>
         <div class="form-field">
           <label for="tecnicoRol">Rol en el Sistema *</label>
-          <select id="tecnicoRol" required data-change="user-role-change">
+          <select id="tecnicoRol" required>
             <option value="inspector">Técnico Inspector (Ejecución de Recorridos)</option>
             <option value="ingeniero">Ingeniero Supervisor (Revisión y Aprobación)</option>
+            <option value="supervisor">Supervisor Técnico (Recorridos y Revisión)</option>
           </select>
         </div>
         <div class="form-field">
@@ -32,14 +33,6 @@
         <div class="form-field">
           <label for="tecnicoCedula">Cédula / Identificación</label>
           <input id="tecnicoCedula" type="text" placeholder="Ej. 2-0789-0123" maxlength="30" />
-        </div>
-        <div id="contenedorTurnoTecnico" class="form-field">
-          <label for="tecnicoTurno">Turno Habitual *</label>
-          <select id="tecnicoTurno" required>
-            <% turnos.forEach(turno => { %>
-              <option value="<%= turno %>"><%= turno %></option>
-            <% }) %>
-          </select>
         </div>
         <div class="form-field">
           <label for="tecnicoEstado">Estado Operativo *</label>
