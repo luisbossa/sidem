@@ -6,6 +6,7 @@
 import path from 'node:path';
 import express from 'express';
 import expressLayouts from 'express-ejs-layouts';
+import compression from 'compression';
 import { config } from './config.js';
 import { crearModelos } from './models/index.js';
 import { cargarSesion } from './middleware/auth.js';
@@ -35,6 +36,9 @@ export function crearApp(db, { carpetaFotos = config.carpetaFotos } = {}) {
   // Detrás del proxy (Vercel o IIS), req.ip debe salir de X-Forwarded-For (bloqueo de login por IP)
   if (config.detrasDeProxy) app.set('trust proxy', true);
   app.use(cabecerasSeguridad);
+  // Comprime las respuestas de texto (JSON, HTML, CSS, JS): /api/datos con un año de informes
+  // baja de ~3 MB a ~50 KB. Las fotos (JPG/PNG) ya vienen comprimidas y no se tocan.
+  app.use(compression());
   app.use(express.json({ limit: '1mb' }));
   app.use(cargarSesion(modelos));
 

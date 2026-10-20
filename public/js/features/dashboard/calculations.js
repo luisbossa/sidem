@@ -317,11 +317,14 @@ export function calcularCumplimiento(registros) {
   registros.forEach(r => {
     const f = new Date(r.fechaISO || r.horaInicioISO);
     if (Number.isNaN(f.getTime())) return;
-    const clave = `${fechaLocalISO(f)}|${r.inspector || ''}`;
-    if (!programados.has(clave)) return;
-    const existente = registrosPorClave.get(clave);
-    if (!existente || new Date(r.horaInicioISO || r.fechaISO) > new Date(existente.horaInicioISO || existente.fechaISO)) {
-      registrosPorClave.set(clave, r);
+    // Cuenta para el técnico asignado si completó el recorrido o si lo inició y otro técnico lo terminó
+    for (const tecnico of new Set([r.inspector, r.iniciadoPor].filter(Boolean))) {
+      const clave = `${fechaLocalISO(f)}|${tecnico}`;
+      if (!programados.has(clave)) continue;
+      const existente = registrosPorClave.get(clave);
+      if (!existente || new Date(r.horaInicioISO || r.fechaISO) > new Date(existente.horaInicioISO || existente.fechaISO)) {
+        registrosPorClave.set(clave, r);
+      }
     }
   });
 

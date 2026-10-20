@@ -12,7 +12,7 @@ base de datos **SQLite** y front-end en CSS y módulos ES (sin frameworks).
 ## Puesta en marcha
 
 ```bash
-npm install        # instala Express, EJS y express-ejs-layouts
+npm install        # instala Express, EJS, express-ejs-layouts y compression
 npm start          # inicia el servidor en http://localhost:3000
 npm run dev        # igual, pero se reinicia solo al cambiar archivos del servidor
 npm test           # pruebas de la API (usa una base en memoria; no toca los datos reales)
