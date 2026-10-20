@@ -27,12 +27,15 @@ export function recorridoACargo(recorridos, id, usuario) {
   return recorrido;
 }
 
-export function crearControladorRecorridos({ recorridos, inspecciones, ajustes, usuarios }) {
+/* Borrador que recibe el navegador: lo guardado más las fotos subidas (están en su propia tabla) */
+export const borradorConFotos = (recorrido, fotos) =>
+  recorrido ? { ...recorrido.datos, fotos: fotos.listarDeRecorrido(recorrido.id) } : null;
+
+export function crearControladorRecorridos({ recorridos, inspecciones, ajustes, usuarios, fotos }) {
   return {
     /* Borrador del recorrido que el técnico tiene a cargo (null si no tiene) */
     leer(req, res) {
-      const recorrido = recorridos.delResponsable(req.usuario.id);
-      res.json(recorrido ? recorrido.datos : null);
+      res.json(borradorConFotos(recorridos.delResponsable(req.usuario.id), fotos));
     },
 
     iniciar(req, res) {
@@ -55,7 +58,7 @@ export function crearControladorRecorridos({ recorridos, inspecciones, ajustes, 
       }
 
       const recorrido = recorridos.iniciar({ tipoRecorrido, fechaLocal, usuarioId: req.usuario.id, inicio: ahora.toISOString() });
-      res.status(201).json(recorrido.datos);
+      res.status(201).json(borradorConFotos(recorrido, fotos));
     },
 
     guardar(req, res) {
@@ -63,13 +66,16 @@ export function crearControladorRecorridos({ recorridos, inspecciones, ajustes, 
       if (!datos.inspeccionActiva) throw solicitudInvalida('El borrador no contiene un recorrido activo.');
       if (JSON.stringify(datos).length > MAX_BORRADOR) throw solicitudInvalida('El borrador es demasiado grande.');
       const recorrido = recorridoACargo(recorridos, datos.inspeccionActiva.id, req.usuario);
-      // Los datos que fija el servidor no se pueden cambiar desde el navegador
+      // Los datos que fija el servidor no se pueden cambiar desde el navegador; las fotos van en su tabla
       datos.inspeccionActiva = { ...datos.inspeccionActiva, ...recorrido.datos.inspeccionActiva };
+      delete datos.fotos;
       recorridos.guardar(recorrido.id, req.usuario.id, datos);
       res.status(204).end();
     },
 
     eliminar(req, res) {
+      const recorrido = recorridos.delResponsable(req.usuario.id);
+      if (recorrido) fotos.eliminarDeRecorrido(recorrido.id);
       recorridos.eliminarDelResponsable(req.usuario.id);
       res.status(204).end();
     },
@@ -104,7 +110,8 @@ export function crearControladorRecorridos({ recorridos, inspecciones, ajustes, 
       }
       limpiarIntentos(clave);
 
-      res.json(recorridos.tomar(recorrido.id, req.usuario.id).datos);
+      // Recibe también las fotos que subió el técnico anterior
+      res.json(borradorConFotos(recorridos.tomar(recorrido.id, req.usuario.id), fotos));
     }
   };
 }

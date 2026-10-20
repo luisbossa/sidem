@@ -5,6 +5,7 @@ import { mostrarVista } from './ui/navigation.js';
 import { pintarIconos } from './ui/icons.js';
 import { cerrarSesion, restaurarProgreso } from './features/session.js';
 import { cambiarContrasena } from './features/password.js';
+import { agregarFoto, quitarFotoDeCampo } from './features/photos.js';
 import {
   iniciarInspeccion, continuarRecorridoAjeno, cancelarInspeccion, finalizarInspeccion, abrirSistema, guardarJustificacionSistema,
   volverAlListadoSistemas, guardarSistemaCompletado, cambioVerificacion
@@ -15,7 +16,7 @@ import {
   abrirModalAsignarSemana, cerrarModalCronograma, guardarSemanaCronograma, eliminarSemanaCronograma, actualizarFinSemanaAutomatica
 } from './features/schedule.js';
 import { abrirModalTecnico, cerrarModalTecnico, guardarTecnico, eliminarUsuarioConfirmado, cambiarPermisoTomaRecorridos } from './features/users.js';
-import { verDetalle, cerrarDetalle, guardarRevisionIngeniero, guardarRespuestaYReenviar, generarPdfInforme } from './features/report-detail.js';
+import { verDetalle, cerrarDetalle, guardarRevisionIngeniero, guardarRespuestaYReenviar, generarPdfInforme, abrirVisorFoto, cerrarVisorFoto } from './features/report-detail.js';
 import { cambiarPeriodoDashboard } from './features/dashboard/render.js';
 import {
   cerrarDetalleDashboard, abrirInformeDesdeDashboard, abrirInformeConHallazgo, abrirDetalleCumplimiento,
@@ -38,6 +39,7 @@ registrarAcciones({
     'save-justification': el => guardarJustificacionSistema(Number(el.dataset.index)),
     'back-to-systems': () => volverAlListadoSistemas(),
     'save-system': () => guardarSistemaCompletado(),
+    'remove-photo': el => quitarFotoDeCampo(el.dataset.id),
 
     // Informes
     'open-report': el => verDetalle(el.dataset.id),
@@ -45,6 +47,8 @@ registrarAcciones({
     'review-report': el => guardarRevisionIngeniero(el.dataset.id, el.dataset.status),
     'reply-report': el => guardarRespuestaYReenviar(el.dataset.id),
     'generate-pdf': () => generarPdfInforme(),
+    'open-photo': el => abrirVisorFoto(el.dataset.id),
+    'close-photo': () => cerrarVisorFoto(),
 
     // Historial
     'clear-technician-filter': () => quitarFiltroTecnico(),
@@ -75,6 +79,7 @@ registrarAcciones({
 
   change: {
     'verification-change': el => cambioVerificacion(el.name),
+    'add-photo': el => agregarFoto(el),
     'filter-technician-reports': el => cambiarFiltroInformesTecnico(el.dataset.filter, el.value),
     'filter-history': el => cambiarFiltroHistorial(el.dataset.filter, el.value),
     'filter-duration': el => abrirDetalleDuracion(el.value),

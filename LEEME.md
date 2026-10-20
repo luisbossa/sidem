@@ -16,7 +16,7 @@ npm install        # instala Express, EJS y express-ejs-layouts
 npm start          # inicia el servidor en http://localhost:3000
 npm run dev        # igual, pero se reinicia solo al cambiar archivos del servidor
 npm test           # pruebas de la API (usa una base en memoria; no toca los datos reales)
-npm run respaldo   # copia de seguridad de la base de datos
+npm run respaldo   # copia de seguridad de la base de datos y de las fotos
 ```
 
 La primera vez se crea `data/sidem.db` con sus tablas y los usuarios iniciales
@@ -35,7 +35,7 @@ La primera vez se crea `data/sidem.db` con sus tablas y los usuarios iniciales
 ### Respaldo
 
 Toda la información está en `data/sidem.db`. Para respaldarla ejecute `npm run respaldo`
-(funciona con el servidor encendido): crea una copia en `data/respaldos/sidem-AAAAMMDD-HHMMSS.db`.
+(funciona con el servidor encendido): crea una copia en `data/respaldos/sidem-AAAAMMDD-HHMMSS.db` y copia las fotos de los recorridos (`data/fotos/`) en `data/respaldos/fotos-AAAAMMDD-HHMMSS/`.
 Para restaurar, detenga el servidor y reemplace `data/sidem.db` por la copia.
 
 ## Arquitectura MVC
@@ -138,6 +138,7 @@ data/                       Base SQLite (se crea al arrancar; no se versiona)
 | `cancelaciones` | Recorridos cancelados con su justificación |
 | `recorridos_abiertos` | Recorridos iniciados y aún no enviados: quién lo inició, quién lo tiene a cargo y el borrador (se restaura al recargar o cambiar de equipo) |
 | `ajustes` | Opciones del ingeniero, por ejemplo si un técnico puede continuar el recorrido de otro |
+| `fotos` | Fotos opcionales de una pregunta (máximo 3). El archivo está en `data/fotos/`; mientras el recorrido está abierto se liga al recorrido y, al enviarlo, al informe. Al cancelar el recorrido se borran |
 
 **Roles:** *Técnico Inspector* (`inspector`) hace recorridos; *Ingeniero Supervisor* (`ingeniero`) revisa informes y administra usuarios, rol semanal y ajustes; *Supervisor Técnico* (`supervisor`) puede hacer las dos cosas, pero no revisa informes de recorridos en los que participó. Los permisos están en `public/js/core/roles.js`, que comparten el servidor y el navegador.
 
@@ -165,6 +166,8 @@ Todas las rutas responden JSON; los errores tienen la forma `{ "error": "mensaje
 | `GET /api/recorridos-abiertos` | con sesión | Recorridos sin terminar |
 | `POST /api/recorridos-abiertos/:id/tomar` | técnico | Continuar el recorrido de otro (requiere el ajuste activo y el usuario y contraseña de quien lo toma) |
 | `GET /api/ajustes` · `PUT /api/ajustes` | con sesión / ingeniero | Ajustes generales |
+| `POST /api/progreso/fotos?recorrido=…&campo=…` · `DELETE /api/progreso/fotos/:id` | técnico responsable | Subir (imagen JPG/PNG en bruto, máx. 3 MB) o quitar una foto del recorrido en curso |
+| `GET /api/fotos/:id` | con sesión | Ver una foto: quien supervisa o un técnico que participó en el recorrido |
 
 ## Seguridad
 

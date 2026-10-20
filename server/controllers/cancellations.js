@@ -5,7 +5,7 @@ import { solicitudInvalida } from '../utils/errors.js';
 import { recorridoACargo } from './route-drafts.js';
 import { puedeSupervisar } from '../../public/js/core/roles.js';
 
-export function crearControladorCancelaciones({ cancelaciones, recorridos }) {
+export function crearControladorCancelaciones({ cancelaciones, recorridos, fotos }) {
   return {
     listar(req, res) {
       res.json(cancelaciones.listar(puedeSupervisar(req.usuario.rol) ? null : req.usuario.id));
@@ -24,7 +24,9 @@ export function crearControladorCancelaciones({ cancelaciones, recorridos }) {
       const justificacion = texto(cuerpo.justificacion, 'Justificación', { requerido: true, max: 500 });
       if (justificacion.length < 5) throw solicitudInvalida('Debe escribir una justificación válida.', 'Justificación obligatoria');
 
-      res.status(201).json(cancelaciones.crear({
+      // La cancelación cierra el recorrido que tenía a cargo: sus fotos se borran
+      const abierto = recorridos.delResponsable(req.usuario.id);
+      const creada = cancelaciones.crear({
         inspectorId: req.usuario.id,
         tipoRecorrido: cuerpo.tipoRecorrido ? opcion(cuerpo.tipoRecorrido, 'Tipo de recorrido', ['manana', 'tarde']) : null,
         horaInicio: inicio.toISOString(),
@@ -32,7 +34,9 @@ export function crearControladorCancelaciones({ cancelaciones, recorridos }) {
         duracionSegundos: Math.max(0, Math.floor((ahora - inicio) / 1000)),
         justificacion,
         sistemasIniciados: arregloDeTextos(cuerpo.sistemasIniciados).filter(sistemaValido)
-      }));
+      });
+      if (abierto) fotos.eliminarDeRecorrido(abierto.id);
+      res.status(201).json(creada);
     }
   };
 }

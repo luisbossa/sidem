@@ -10,6 +10,7 @@ const TRAZOS = {
   check: '<path d="M20 6 9 17l-5-5"/>',
   circulo: '<circle cx="12" cy="12" r="8"/>',
   cerrar: '<path d="M18 6 6 18M6 6l12 12"/>',
+  camara: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/>',
   mas: '<path d="M12 5v14M5 12h14"/>',
   flechaDerecha: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   flechaIzquierda: '<path d="M19 12H5M11 18l-6-6 6-6"/>',

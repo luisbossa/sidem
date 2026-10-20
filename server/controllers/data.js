@@ -1,8 +1,9 @@
 /* Controlador de datos iniciales: todo lo que la app necesita al cargar, según el rol. */
 import { diaLocal } from '../utils/dates.js';
 import { puedeInspeccionar, puedeSupervisar } from '../../public/js/core/roles.js';
+import { borradorConFotos } from './route-drafts.js';
 
-export function crearControladorDatos({ usuarios, semanas, inspecciones, cancelaciones, recorridos, ajustes }) {
+export function crearControladorDatos({ usuarios, semanas, inspecciones, cancelaciones, recorridos, ajustes, fotos }) {
   /* Estado de los dos recorridos de hoy para toda la Casa de Máquinas */
   function recorridosDeHoy(abiertos) {
     const hoy = diaLocal();
@@ -27,7 +28,7 @@ export function crearControladorDatos({ usuarios, semanas, inspecciones, cancela
         cronograma: semanas.listar(),
         registros: inspecciones.listar(soloPropios),
         cancelaciones: cancelaciones.listar(soloPropios),
-        progreso: puedeInspeccionar(req.usuario.rol) ? (recorridos.delResponsable(req.usuario.id)?.datos ?? null) : null,
+        progreso: puedeInspeccionar(req.usuario.rol) ? borradorConFotos(recorridos.delResponsable(req.usuario.id), fotos) : null,
         recorridosAbiertos: abiertos,
         recorridosHoy: recorridosDeHoy(abiertos),
         ajustes: ajustes.leer()

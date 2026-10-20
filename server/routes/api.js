@@ -1,5 +1,5 @@
 /* Rutas de la API REST (/api). Cada ruta: middleware de permisos → controlador. */
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { requiereSesion, requiereSupervisar, requiereInspeccionar } from '../middleware/auth.js';
 import { sinCache } from '../middleware/security-headers.js';
 import { noEncontrado } from '../utils/errors.js';
@@ -11,6 +11,7 @@ import { crearControladorInspecciones } from '../controllers/inspections.js';
 import { crearControladorCancelaciones } from '../controllers/cancellations.js';
 import { crearControladorRecorridos } from '../controllers/route-drafts.js';
 import { crearControladorAjustes } from '../controllers/settings.js';
+import { crearControladorFotos } from '../controllers/photos.js';
 
 export function rutasApi(modelos) {
   const auth = crearControladorAuth(modelos);
@@ -21,6 +22,9 @@ export function rutasApi(modelos) {
   const cancelaciones = crearControladorCancelaciones(modelos);
   const recorridos = crearControladorRecorridos(modelos);
   const ajustesGenerales = crearControladorAjustes(modelos);
+  const fotos = crearControladorFotos(modelos);
+  // Las fotos llegan como imagen en bruto (el navegador ya las reduce a ~300 KB)
+  const imagen = express.raw({ type: ['image/jpeg', 'image/png'], limit: '3mb' });
 
   // "ingeniero": revisar y administrar (Ingeniero Supervisor y Supervisor Técnico)
   // "inspector": hacer recorridos (Técnico Inspector y Supervisor Técnico)
@@ -67,6 +71,11 @@ export function rutasApi(modelos) {
   api.post('/progreso/iniciar', inspector, recorridos.iniciar);
   api.put('/progreso', inspector, recorridos.guardar);
   api.delete('/progreso', inspector, recorridos.eliminar);
+
+  // Fotos opcionales de las preguntas (máximo 3 por pregunta)
+  api.post('/progreso/fotos', inspector, imagen, fotos.subir);
+  api.delete('/progreso/fotos/:id', inspector, fotos.quitar);
+  api.get('/fotos/:id', requiereSesion, fotos.ver);
 
   // Recorridos sin terminar: otro técnico puede continuarlos si el ingeniero lo habilitó
   api.get('/recorridos-abiertos', requiereSesion, recorridos.listarAbiertos);

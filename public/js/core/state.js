@@ -14,6 +14,8 @@ export const estado = {
   mostrarJustificacionesPendientes: false,
   // true mientras está abierto el formulario de un sistema (para reanudar en él)
   enFormulario: false,
+  // Fotos subidas al recorrido en curso: [{ id, campoId }]
+  fotos: [],
 
   // Filtros de listados
   filtroTecnicoActivo: null,

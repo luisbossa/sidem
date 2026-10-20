@@ -6,6 +6,7 @@ import { estado } from '../core/state.js';
 import { formatearFechaCorta, formatearHoraExacta, fechaLocalISO } from '../core/format.js';
 import { puedeInspeccionar } from '../core/roles.js';
 import { camposObligatorios, campoCompleto } from '../core/avance.js';
+import { plantillaFotosCampo } from './photos.js';
 import { SISTEMAS } from '../data/systems.js';
 import {
   crearInspeccion, crearCancelacion, guardarProgreso, eliminarProgreso, sincronizar, iniciarRecorridoApi, tomarRecorrido,
@@ -108,6 +109,7 @@ export function entrarEnRecorrido(borrador) {
   estado.justificacionesSistemas = borrador.justificacionesSistemas || {};
   estado.ordenRecorrido = borrador.ordenRecorrido || [];
   estado.mostrarJustificacionesPendientes = Boolean(borrador.mostrarJustificacionesPendientes);
+  estado.fotos = Array.isArray(borrador.fotos) ? borrador.fotos : [];
   $('estadoCabecera').textContent = 'Inspección en curso';
   actualizarBloqueoNavegacionTecnico();
   mostrarVista('inspeccion');
@@ -332,6 +334,7 @@ function plantillaCampo(c) {
             <textarea id="${c.id}_det" rows="2" placeholder="Describa la anomalía encontrada">${escapar(detalle)}</textarea>
           </div>
         </fieldset>
+        ${plantillaFotosCampo(c)}
       </div>`;
   }
 
@@ -342,6 +345,7 @@ function plantillaCampo(c) {
         <label for="${c.id}">${escapar(c.label)} *</label>
         <textarea id="${c.id}" rows="3" placeholder="Digite el valor">${escapar(txt)}</textarea>
         ${ayuda}
+        ${plantillaFotosCampo(c)}
       </div>`;
   }
 
@@ -353,6 +357,7 @@ function plantillaCampo(c) {
         ? `<div class="input-group"><input id="${c.id}" type="text" inputmode="decimal" placeholder="Digite el valor" value="${escapar(val)}"><span class="input-addon">${escapar(c.unidad)}</span></div>`
         : `<input id="${c.id}" type="text" placeholder="Digite el valor" value="${escapar(val)}">`}
       ${ayuda}
+      ${plantillaFotosCampo(c)}
     </div>`;
 }
 
@@ -543,6 +548,7 @@ function limpiarRecorridoEnPantalla() {
   estado.ordenRecorrido = [];
   estado.mostrarJustificacionesPendientes = false;
   estado.enFormulario = false;
+  estado.fotos = [];
   actualizarBloqueoNavegacionTecnico();
   $('estadoCabecera').textContent = 'Inspector activo';
 }

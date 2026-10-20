@@ -200,6 +200,33 @@ export async function tomarRecorrido(id, usuario, password) {
   return borrador;
 }
 
+/* Fotos de las preguntas del recorrido en curso: se suben como imagen en bruto */
+export async function subirFoto(recorridoId, campoId, imagen) {
+  let respuesta;
+  try {
+    respuesta = await fetch(`/api/progreso/fotos?recorrido=${encodeURIComponent(recorridoId)}&campo=${encodeURIComponent(campoId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': imagen.type || 'image/jpeg' },
+      body: imagen,
+      credentials: 'same-origin'
+    });
+  } catch {
+    throw new ErrorApi('No se pudo subir la foto. Verifique la red e intente de nuevo.', { titulo: 'Sin conexión' });
+  }
+  const datos = await respuesta.json().catch(() => null);
+  if (respuesta.ok) return datos;
+  if (respuesta.status === 401) location.replace(URL_LOGIN);
+  const mensaje = respuesta.status === 413 ? 'La foto es demasiado grande.' : datos?.error || `Error del servidor (${respuesta.status}).`;
+  throw new ErrorApi(mensaje, { estado: respuesta.status, titulo: datos?.titulo || 'No se pudo subir la foto', codigo: datos?.codigo || '' });
+}
+
+export async function quitarFoto(id) {
+  await api('DELETE', '/progreso/fotos/' + encodeURIComponent(id));
+}
+
+/* Dirección para mostrar una foto (el servidor revisa quién la puede ver) */
+export const urlFoto = id => '/api/fotos/' + encodeURIComponent(id);
+
 /* Recorrido en curso: se guarda en el servidor con una pequeña espera para agrupar cambios */
 let temporizadorProgreso = null;
 let progresoPendiente = false;
@@ -210,6 +237,12 @@ export const leerProgreso = () => cache.progreso;
 /* Función que se llama si, al guardar, el servidor indica que el recorrido ya no es del técnico */
 export function alPerderRecorrido(fn) {
   avisoRecorridoPerdido = fn;
+}
+
+/* Para otras peticiones del recorrido (p. ej. fotos) que reciben el mismo aviso */
+export function avisarRecorridoPerdido(error) {
+  cache.progreso = null;
+  avisoRecorridoPerdido(error);
 }
 
 function enviarProgreso(keepalive = false) {

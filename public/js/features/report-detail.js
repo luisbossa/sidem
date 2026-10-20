@@ -6,7 +6,7 @@ import { icono } from '../ui/icons.js';
 import { formatearFechaCompleta, formatearHoraExacta, claveFechaLocal, etiquetaTipoRecorrido } from '../core/format.js';
 import { SISTEMAS } from '../data/systems.js';
 import { puedeInspeccionar, puedeSupervisar, puedeRevisarInforme, participoEnInforme } from '../core/roles.js';
-import { leerRegistros, revisarInspeccion, responderInspeccion } from '../data/storage.js';
+import { leerRegistros, revisarInspeccion, responderInspeccion, urlFoto } from '../data/storage.js';
 import { mostrarAlertaVisual } from '../ui/dialogs.js';
 import { renderHistorial } from './history.js';
 import { renderDevolucionesInspector } from './technician-reports.js';
@@ -106,10 +106,16 @@ function plantillaSistema(s, r, hallazgo) {
       }
     }
     const esDestacado = hallazgo && hallazgo.campoId === c.id;
+    const fotos = (r.fotos && r.fotos[c.id]) || [];
+    // Una pregunta sin respuesta pero con foto también se muestra (la foto es el dato)
     return `
-      <div id="reporte_campo_${c.id}" class="summary-item ${esAnomalo ? 'anomaly' : ''} ${esDestacado ? 'finding-highlight' : ''}">
+      <div id="reporte_campo_${c.id}" class="summary-item ${esAnomalo ? 'anomaly' : ''} ${esDestacado ? 'finding-highlight' : ''} ${fotos.length ? 'has-photos' : ''}">
         <strong>${escapar(c.label)}</strong>
         <span>${escapar(texto)}</span>
+        ${fotos.length ? `<div class="report-photos">${fotos.map((id, i) => `
+          <button type="button" class="report-photo" data-action="open-photo" data-id="${escapar(id)}" aria-label="Ver foto ${i + 1} de ${escapar(c.label)}">
+            <img src="${urlFoto(id)}" alt="Foto ${i + 1}: ${escapar(c.label)}" loading="lazy" />
+          </button>`).join('')}</div>` : ''}
       </div>`;
   }).join('');
 
@@ -267,6 +273,9 @@ const ESTILOS_PDF = `
   .finding-callout, .resolution-box { break-inside:avoid; page-break-inside:avoid; margin-bottom:9px; padding:10px; }
   .conversation-block { break-inside:auto; page-break-inside:auto; margin-bottom:9px; padding:10px; }
   .message-bubble { break-inside:avoid; page-break-inside:avoid; padding:8px 10px; margin-bottom:6px; font-size:9.5px; }
+  .summary-item.has-photos { flex-wrap:wrap; }
+  .report-photos { flex-basis:100%; display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+  .report-photos img { width:150px; height:150px; object-fit:cover; border:1px solid #cbd5e1; border-radius:5px; }
   h1, h2, h3, h4 { break-after:avoid-page; page-break-after:avoid; }
   p { orphans:3; widows:3; }`;
 
@@ -279,6 +288,9 @@ export async function generarPdfInforme() {
   }
 
   const contenido = $('detalleContenido').cloneNode(true);
+  // Las fotos van como imágenes (sin el botón que abre el visor) y con la dirección completa
+  contenido.querySelectorAll('.report-photo').forEach(boton => boton.replaceWith(...boton.childNodes));
+  contenido.querySelectorAll('.report-photos img').forEach(img => { img.src = new URL(img.getAttribute('src'), location.href).href; img.removeAttribute('loading'); });
   contenido.querySelectorAll('.review-box, .reply-box, button').forEach(el => el.remove());
   const fechaClave = claveFechaLocal(r.fechaISO || r.horaInicioISO);
   const turno = r.tipoRecorrido === 'tarde' ? 'Tarde' : r.tipoRecorrido === 'manana' ? 'Manana' : 'Recorrido';
@@ -311,11 +323,41 @@ export async function generarPdfInforme() {
     impreso = true;
     ventana.print();
   };
+  // "load" espera también a las fotos; si tarda demasiado, se imprime igual
   ventana.addEventListener('load', () => setTimeout(imprimir, 100));
-  setTimeout(imprimir, 1500);
+  setTimeout(imprimir, 5000);
 }
 
 export function cerrarDetalle() {
   $('modalDetalle').classList.add('hidden');
   estado.registroDetalleActivo = null;
 }
+
+/* Visor de fotos del informe: la foto en grande sobre la ventana del informe */
+export function abrirVisorFoto(id) {
+  let visor = $('visorFoto');
+  if (!visor) {
+    visor = document.createElement('div');
+    visor.id = 'visorFoto';
+    visor.className = 'photo-viewer hidden';
+    visor.setAttribute('role', 'dialog');
+    visor.setAttribute('aria-modal', 'true');
+    visor.setAttribute('aria-label', 'Foto del informe');
+    visor.dataset.backdropAction = 'close-photo';
+    visor.innerHTML = `
+      <button type="button" class="photo-viewer-close" data-action="close-photo" aria-label="Cerrar foto">${icono('cerrar')}</button>
+      <img id="visorFotoImagen" alt="Foto del informe" />`;
+    document.body.appendChild(visor);
+  }
+  $('visorFotoImagen').src = urlFoto(id);
+  visor.classList.remove('hidden');
+  visor.querySelector('.photo-viewer-close').focus();
+}
+
+export function cerrarVisorFoto() {
+  $('visorFoto')?.classList.add('hidden');
+}
+
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('visorFoto') && !$('visorFoto').classList.contains('hidden')) cerrarVisorFoto();
+});

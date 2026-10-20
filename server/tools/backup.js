@@ -1,6 +1,6 @@
 /* Copia de respaldo de la base de datos: npm run respaldo
    Usa VACUUM INTO, que genera una copia consistente aunque el servidor esté en marcha.
-   Las copias quedan en data/respaldos/sidem-AAAAMMDD-HHMMSS.db */
+   Las copias quedan en data/respaldos/sidem-AAAAMMDD-HHMMSS.db, y las fotos en data/respaldos/fotos-AAAAMMDD-HHMMSS/ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -20,3 +20,10 @@ const db = new DatabaseSync(config.rutaBaseDatos, { readOnly: true });
 db.prepare('VACUUM INTO ?').run(destino);
 db.close();
 console.log(`[SIDEM] Respaldo creado: ${destino}`);
+
+// Fotos de los recorridos: se copian junto al respaldo de la base
+if (fs.existsSync(config.carpetaFotos)) {
+  const destinoFotos = path.join(carpeta, `fotos-${marca}`);
+  fs.cpSync(config.carpetaFotos, destinoFotos, { recursive: true });
+  console.log(`[SIDEM] Fotos copiadas: ${destinoFotos} (${fs.readdirSync(destinoFotos).length} archivo(s))`);
+}

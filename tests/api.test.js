@@ -14,9 +14,13 @@ let servidor;
 let base;
 let db;
 
+let carpetaFotos;
+
 before(async () => {
   db = abrirBaseDatos(':memory:', { silencioso: true });
-  servidor = crearApp(db).listen(0);
+  // Las fotos de las pruebas van a una carpeta temporal, no a data/fotos
+  carpetaFotos = fs.mkdtempSync(path.join(os.tmpdir(), 'sidem-fotos-'));
+  servidor = crearApp(db, { carpetaFotos }).listen(0);
   await new Promise(r => servidor.once('listening', r));
   base = `http://127.0.0.1:${servidor.address().port}`;
 });
@@ -24,6 +28,7 @@ before(async () => {
 after(() => {
   servidor.close();
   db.close();
+  fs.rmSync(carpetaFotos, { recursive: true, force: true });
 });
 
 /* Cliente con cookie de sesión propia */
@@ -48,7 +53,17 @@ function cliente() {
     post: (ruta, c) => pedir('POST', ruta, c ?? {}),
     put: (ruta, c) => pedir('PUT', ruta, c ?? {}),
     del: ruta => pedir('DELETE', ruta),
-    login: (usuario, password = '123') => pedir('POST', '/api/auth/login', { usuario, password })
+    login: (usuario, password = '123') => pedir('POST', '/api/auth/login', { usuario, password }),
+    /* Sube un archivo en bruto (fotos) */
+    enviarArchivo: async (ruta, contenido, tipo = 'image/jpeg') => {
+      const r = await fetch(base + ruta, { method: 'POST', headers: { 'Content-Type': tipo, cookie }, body: contenido });
+      return { estado: r.status, datos: (r.headers.get('content-type') || '').includes('json') ? await r.json() : null };
+    },
+    /* Descarga un archivo: { estado, tipo, contenido (Buffer), cache } */
+    descargar: async ruta => {
+      const r = await fetch(base + ruta, { headers: { cookie } });
+      return { estado: r.status, tipo: r.headers.get('content-type'), cache: r.headers.get('cache-control'), contenido: Buffer.from(await r.arrayBuffer()) };
+    }
   };
 }
 
@@ -396,7 +411,7 @@ const CARLOS = 'usr-3';
 
 /* Día libre: sin informes ni recorridos abiertos, y con la opción de continuar apagada */
 function empezarDiaLimpio() {
-  db.exec("DELETE FROM inspecciones; DELETE FROM recorridos_abiertos; DELETE FROM ajustes");
+  db.exec("DELETE FROM inspecciones; DELETE FROM recorridos_abiertos; DELETE FROM fotos; DELETE FROM ajustes");
 }
 
 /* Recorrido abierto iniciado hace "dias" días (se inserta directo: la app lo pasaría a hoy al leerlo) */
@@ -986,4 +1001,134 @@ test('otro técnico continúa en el sistema y la pregunta donde quedó el primer
   assert.equal((await carlos.put('/api/progreso', siguiente)).estado, 204);
   assert.equal((await carlos.get('/api/recorridos-abiertos')).datos[0].quedoEn.pregunta, preguntas[3]?.label ?? null);
   await ingeniero.put('/api/ajustes', { permitirTomaRecorridos: false });
+});
+
+/* ---- Fotos opcionales en las preguntas ---- */
+
+// Bastan los "bytes mágicos" para que el servidor reconozca el tipo
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0xff, 0xd9]);
+const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
+const archivosEnCarpeta = () => (fs.existsSync(carpetaFotos) ? fs.readdirSync(carpetaFotos).length : 0);
+const rutaSubir = (recorridoId, campo) => `/api/progreso/fotos?recorrido=${encodeURIComponent(recorridoId)}&campo=${encodeURIComponent(campo)}`;
+
+test('fotos: se suben a una pregunta, máximo 3, solo imágenes y solo el responsable', async () => {
+  empezarDiaLimpio();
+  const { ronald, carlos } = await tecnicos();
+  const recorridoId = await iniciarRecorrido(ronald, 'manana');
+  const antes = archivosEnCarpeta();
+
+  const subida = await ronald.enviarArchivo(rutaSubir(recorridoId, 'fugasIncendio'), JPEG);
+  assert.equal(subida.estado, 201, subida.datos?.error);
+  assert.match(subida.datos.id, /^foto-/);
+  assert.equal(subida.datos.campoId, 'fugasIncendio');
+  assert.equal(archivosEnCarpeta(), antes + 1, 'el archivo queda en la carpeta de fotos');
+  assert.equal((await ronald.enviarArchivo(rutaSubir(recorridoId, 'fugasIncendio'), PNG, 'image/png')).estado, 201, 'también PNG');
+  assert.equal((await ronald.enviarArchivo(rutaSubir(recorridoId, 'fugasIncendio'), JPEG)).estado, 201);
+
+  const cuarta = await ronald.enviarArchivo(rutaSubir(recorridoId, 'fugasIncendio'), JPEG);
+  assert.equal(cuarta.estado, 409);
+  assert.equal(cuarta.datos.titulo, 'Límite de fotos');
+  assert.equal((await ronald.enviarArchivo(rutaSubir(recorridoId, 'nivelDiesel'), JPEG)).estado, 201, 'el límite es por pregunta');
+
+  const falsa = await ronald.enviarArchivo(rutaSubir(recorridoId, 'nivelDiesel'), Buffer.from('<script>no soy foto</script>'), 'image/jpeg');
+  assert.equal(falsa.estado, 400, 'se revisa el contenido, no solo el tipo declarado');
+  assert.equal(falsa.datos.titulo, 'Foto no válida');
+  assert.equal((await ronald.enviarArchivo(rutaSubir(recorridoId, 'noExiste'), JPEG)).estado, 400, 'pregunta inexistente');
+  assert.equal((await ronald.enviarArchivo(rutaSubir(recorridoId, 'nivelDiesel'), JPEG, 'text/plain')).estado, 400, 'tipo no permitido');
+  assert.equal((await ronald.enviarArchivo(rutaSubir(recorridoId, 'nivelDiesel'), Buffer.alloc(4 * 1024 * 1024, 0xff), 'image/jpeg')).estado, 413, 'más de 3 MB');
+
+  const ajena = await carlos.enviarArchivo(rutaSubir(recorridoId, 'nivelDiesel'), JPEG);
+  assert.equal(ajena.estado, 409, 'otro técnico no sube fotos a un recorrido que no tiene a cargo');
+  const ingeniero = cliente();
+  await ingeniero.login('ingeniero');
+  assert.equal((await ingeniero.enviarArchivo(rutaSubir(recorridoId, 'nivelDiesel'), JPEG)).estado, 403, 'el ingeniero no hace recorridos');
+
+  // Al volver a abrir la app, el borrador trae las fotos
+  const borrador = (await ronald.get('/api/datos')).datos.progreso;
+  assert.equal(borrador.fotos.length, 4);
+  assert.deepEqual(borrador.fotos.filter(f => f.campoId === 'fugasIncendio').length, 3);
+  // Guardar el borrador no cambia las fotos aunque el navegador envíe otra lista
+  await ronald.put('/api/progreso', { ...borrador, fotos: [] });
+  assert.equal((await ronald.get('/api/progreso')).datos.fotos.length, 4);
+  assert.equal(db.prepare('SELECT datos FROM recorridos_abiertos WHERE id = ?').get(recorridoId).datos.includes('"fotos"'), false, 'no se guardan dentro del borrador');
+});
+
+test('fotos: quitar una foto mientras el recorrido está abierto', async () => {
+  empezarDiaLimpio();
+  const { ronald, carlos } = await tecnicos();
+  const recorridoId = await iniciarRecorrido(ronald, 'tarde');
+  const { datos: foto } = await ronald.enviarArchivo(rutaSubir(recorridoId, 'nivelDiesel'), JPEG);
+  const antes = archivosEnCarpeta();
+
+  assert.equal((await carlos.del(`/api/progreso/fotos/${foto.id}`)).estado, 409, 'solo el responsable la quita');
+  assert.equal((await ronald.del(`/api/progreso/fotos/${foto.id}`)).estado, 204);
+  assert.equal(archivosEnCarpeta(), antes - 1, 'se borra el archivo');
+  assert.equal((await ronald.del(`/api/progreso/fotos/${foto.id}`)).estado, 404);
+  assert.equal((await ronald.get('/api/progreso')).datos.fotos.length, 0);
+  await ronald.del('/api/progreso');
+});
+
+test('fotos: pasan al informe y solo las ven quienes ven el informe', async () => {
+  empezarDiaLimpio();
+  const { ronald, carlos, ingeniero } = await tecnicos();
+  await ingeniero.put('/api/ajustes', { permitirTomaRecorridos: true });
+  const recorridoId = await iniciarRecorrido(ronald, 'manana');
+  const { datos: foto } = await ronald.enviarArchivo(rutaSubir(recorridoId, 'fugasIncendio'), JPEG);
+
+  // Mientras está abierto, la ve su responsable y quien supervisa; otro técnico no
+  assert.equal((await ronald.descargar(`/api/fotos/${foto.id}`)).estado, 200);
+  assert.equal((await ingeniero.descargar(`/api/fotos/${foto.id}`)).estado, 200);
+  assert.equal((await carlos.descargar(`/api/fotos/${foto.id}`)).estado, 404);
+
+  // Carlos continúa el recorrido: recibe la foto y ahora la puede ver y agregar otras
+  const tomado = await carlos.post(`/api/recorridos-abiertos/${recorridoId}/tomar`, { usuario: 'cmurillo', password: '123' });
+  assert.deepEqual(tomado.datos.fotos, [{ id: foto.id, campoId: 'fugasIncendio' }]);
+  assert.equal((await carlos.descargar(`/api/fotos/${foto.id}`)).estado, 200);
+  assert.equal((await ronald.descargar(`/api/fotos/${foto.id}`)).estado, 404, 'Ronald ya no lo tiene a cargo');
+  const { datos: otra } = await carlos.enviarArchivo(rutaSubir(recorridoId, 'nivelDiesel'), PNG, 'image/png');
+
+  const enviado = await carlos.post('/api/inspecciones', informeCompleto('fugasIncendio', recorridoId));
+  assert.equal(enviado.estado, 201, enviado.datos?.error);
+  assert.deepEqual(enviado.datos.fotos, { fugasIncendio: [foto.id], nivelDiesel: [otra.id] });
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fotos WHERE recorrido_id = ?').get(recorridoId).n, 0, 'ya no quedan ligadas al recorrido');
+
+  // Ya enviado: lo ven los dos técnicos que participaron y quien supervisa
+  const descarga = await ronald.descargar(`/api/fotos/${foto.id}`);
+  assert.equal(descarga.estado, 200);
+  assert.equal(descarga.tipo, 'image/jpeg');
+  assert.ok(descarga.contenido.equals(JPEG), 'devuelve exactamente el archivo subido');
+  assert.match(descarga.cache, /private/, 'no la guardan proxies compartidos');
+  assert.equal((await carlos.descargar(`/api/fotos/${otra.id}`)).tipo, 'image/png');
+  assert.equal((await ingeniero.descargar(`/api/fotos/${foto.id}`)).estado, 200);
+  const esteban = cliente();
+  const creado = await ingeniero.post('/api/usuarios', { nombre: 'Ajeno Prueba', rol: 'inspector', usuario: 'ajeno.fotos', password: 'clave1', estado: 'Activo' });
+  assert.equal(creado.estado, 201);
+  await esteban.login('ajeno.fotos', 'clave1');
+  assert.equal((await esteban.descargar(`/api/fotos/${foto.id}`)).estado, 404, 'un técnico que no participó no la ve');
+  assert.equal((await cliente().descargar(`/api/fotos/${foto.id}`)).estado, 401, 'sin sesión');
+  assert.equal((await carlos.del(`/api/progreso/fotos/${foto.id}`)).estado, 404, 'una foto de un informe enviado no se quita');
+
+  // El informe que reciben los técnicos también trae las fotos
+  const informe = (await ronald.get('/api/datos')).datos.registros.find(r => r.id === enviado.datos.id);
+  assert.deepEqual(informe.fotos.fugasIncendio, [foto.id]);
+  await ingeniero.put('/api/ajustes', { permitirTomaRecorridos: false });
+});
+
+test('fotos: cancelar o descartar el recorrido borra sus fotos', async () => {
+  empezarDiaLimpio();
+  const { ronald } = await tecnicos();
+  const antes = archivosEnCarpeta();
+
+  const r1 = await iniciarRecorrido(ronald, 'manana');
+  await ronald.enviarArchivo(rutaSubir(r1, 'nivelDiesel'), JPEG);
+  await ronald.enviarArchivo(rutaSubir(r1, 'fugasIncendio'), JPEG);
+  assert.equal(archivosEnCarpeta(), antes + 2);
+  assert.equal((await ronald.post('/api/cancelaciones', { recorridoId: r1, justificacion: 'Emergencia eléctrica' })).estado, 201);
+  assert.equal(archivosEnCarpeta(), antes, 'cancelar borra los archivos');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM fotos WHERE recorrido_id = ?').get(r1).n, 0, 'y sus registros');
+
+  const r2 = await iniciarRecorrido(ronald, 'tarde');
+  await ronald.enviarArchivo(rutaSubir(r2, 'nivelDiesel'), JPEG);
+  assert.equal((await ronald.del('/api/progreso')).estado, 204);
+  assert.equal(archivosEnCarpeta(), antes, 'descartar el borrador también');
 });
